@@ -1,6 +1,6 @@
 #  FluxInk Verse — Web Komik & Manhwa Platform
 
-Flux Comics adalah website berbasis **Next.js** yang dibuat untuk menampilkan komik, manhwa, atau ilustrasi anime secara modern, cepat, dan responsif.  
+FluxInk Verse adalah website berbasis **Next.js** yang dibuat untuk menampilkan komik, manhwa, atau ilustrasi anime secara modern, cepat, dan responsif.  
 Project ini cocok untuk personal project, studio komik, atau platform baca online.
 
 ---
