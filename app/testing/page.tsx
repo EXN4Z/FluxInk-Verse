@@ -30,7 +30,7 @@ export default function test() {
             if(errorPopuler) {
                 alert(errorPopuler.message);
             } else {
-                alert("data berhasil masuk ke komik populer", populer);
+                alert("data berhasil masuk ke komik populer");
             }
         }
         setJudul("");
