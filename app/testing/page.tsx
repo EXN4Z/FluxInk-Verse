@@ -1,6 +1,6 @@
 "use client";
 import { supabase } from '@/lib/supabase';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 
 export default function test() {
@@ -8,7 +8,7 @@ export default function test() {
     const [deskripsi, setDesc] = useState("");
     const [view, setView] = useState(0);
 
-    const submit = async(e) => {
+    const submit = async(e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const {data, error} = await supabase
