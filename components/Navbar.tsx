@@ -13,6 +13,7 @@ export default function Navbar() {
   const [q, setQ] = useState("");
 
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const navItems = useMemo(
     () => [
@@ -45,11 +46,26 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // click outside to close mobile menu
   useEffect(() => {
-    if (openSearch) {
-      // kasih delay dikit biar input pasti ke-mount
-      requestAnimationFrame(() => searchRef.current?.focus());
-    }
+    if (!openMenu) return;
+
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!menuRef.current) return;
+      const target = e.target as Node;
+      if (!menuRef.current.contains(target)) setOpenMenu(false);
+    };
+
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [openMenu]);
+
+  useEffect(() => {
+    if (openSearch) requestAnimationFrame(() => searchRef.current?.focus());
   }, [openSearch]);
 
   const isActive = (href: string) => {
@@ -60,7 +76,6 @@ export default function Navbar() {
   return (
     <>
       <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/35 backdrop-blur-xl">
-        {/* subtle glow */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />
 
         <div className="relative mx-auto max-w-7xl px-6">
@@ -69,8 +84,7 @@ export default function Navbar() {
             <div className="flex items-center gap-10">
               <Link href="/" className="group inline-flex items-center gap-2">
                 <span className="relative text-xl font-extrabold tracking-tight text-white">
-                  FluxInk
-                  <span className="text-white/60">Verse</span>
+                  FluxInk<span className="text-white/60">Verse</span>
                   <span className="absolute -bottom-2 left-0 h-[2px] w-0 bg-white/70 transition-all duration-300 group-hover:w-full" />
                 </span>
 
@@ -83,7 +97,6 @@ export default function Navbar() {
               <ul className="hidden md:flex items-center gap-2">
                 {navItems.map((item) => {
                   const active = isActive(item.href);
-
                   return (
                     <li key={item.name}>
                       <Link
@@ -132,20 +145,23 @@ export default function Navbar() {
                 href="/login"
                 className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
               >
-                Sign in
+                Login
               </Link>
 
               <Link
                 href="/register"
                 className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
               >
-                Sign up
+                Daftar
               </Link>
 
               {/* Mobile buttons */}
               <button
                 type="button"
-                onClick={() => setOpenSearch(true)}
+                onClick={() => {
+                  setOpenSearch(true);
+                  setOpenMenu(false);
+                }}
                 className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition"
                 aria-label="Cari"
               >
@@ -168,51 +184,64 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile menu panel */}
+          {/* MOBILE DROPDOWN GLASS (compact) */}
           <div
+            ref={menuRef}
             className={[
-              "md:hidden overflow-hidden transition-[max-height,opacity] duration-300",
-              openMenu ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0",
+              "md:hidden absolute right-6 top-[64px] w-[260px] origin-top-right",
+              "transition duration-200",
+              openMenu ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
             ].join(" ")}
           >
-            <div className="pb-6 pt-2">
-              <div className="flex flex-col gap-2">
-                {navItems.map((item) => {
-                  const active = isActive(item.href);
-
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setOpenMenu(false)}
-                      className={[
-                        "rounded-2xl px-4 py-3 text-sm transition ring-1 ring-white/10",
-                        active
-                          ? "bg-white/10 text-white"
-                          : "bg-white/5 text-white/75 hover:bg-white/10 hover:text-white",
-                      ].join(" ")}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 flex gap-3">
-                <Link
-                  href="/login"
-                  onClick={() => setOpenMenu(false)}
-                  className="flex-1 inline-flex items-center justify-center rounded-xl bg-white/5 h-10 text-sm text-white/80 ring-1 ring-white/10 hover:bg-white/10 transition"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setOpenMenu(false)}
-                  className="flex-1 inline-flex items-center justify-center rounded-xl bg-white h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
-                >
-                  Sign up
-                </Link>
+            <div className="rounded-xl bg-black ring-1 ring-white/10 shadow-xl shadow-black/50 backdrop-blur-lg overflow-hidden">
+              <div className="p-2">
+                {/* nav items */}
+                <div className="grid gap-1">
+                  {navItems.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setOpenMenu(false)}
+                        className={[
+                          "flex items-center justify-between rounded-lg px-3 py-2 text-sm transition",
+                          active
+                            ? "bg-white/10 text-white"
+                            : "text-white/70 hover:bg-white/5 hover:text-white",
+                        ].join(" ")}
+                      >
+                        <span>{item.name}</span>
+                        <span
+                          className={[
+                            "h-1.5 w-1.5 rounded-full",
+                            active ? "bg-emerald-300" : "bg-white/30",
+                          ].join(" ")}
+                        />
+                      </Link>
+                    );
+                  })}
+                </div>
+                
+                <div className="my-2 h-px bg-white/10" />
+                
+                {/* auth buttons (column) */}
+                <div className="flex flex-col gap-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setOpenMenu(false)}
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-white/5 text-sm text-white/80 ring-1 ring-white/10 hover:bg-white/10 transition"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setOpenMenu(false)}
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
+                  >
+                    Daftar
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -263,9 +292,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            <p className="mt-3 text-center text-xs text-white/40">
-              Klik area gelap untuk menutup
-            </p>
+            <p className="mt-3 text-center text-xs text-white/40">Klik area gelap untuk menutup</p>
           </div>
         </div>
       )}
