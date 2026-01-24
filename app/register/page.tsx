@@ -14,7 +14,7 @@ export default function Register() {
         e.preventDefault();
 
         if(!email || !password) {
-            setShowWarn(message: "Semua Field wajib diisi!", type: 'error')
+            setShowWarn({message: "Semua Field wajib diisi!", type: 'error'})
             return;
         }
         const {data, error} = await supabase.auth.signUp({
@@ -27,9 +27,9 @@ export default function Register() {
         });
 
         if(error) {
-            setShowWarn(error.message);
+            setShowWarn({message: error.message, type: 'error'});
         }  else {
-            alert("User Berhasil dimasukkan")
+            setShowWarn({message: "data berhasil ditambahkan!", type: 'success'})
         }
         setNama("");
         setEmail("");
@@ -62,8 +62,10 @@ export default function Register() {
             className="border p-2 rounded"
             />
             {showWarn && (
-                <div className="text-red-600">
-                    {showWarn}
+                <div className={`text-md ${
+                    showWarn.type === "error" ? 'text-red-600' : 'text-green-600'
+                }`}>
+                    {showWarn.message}
                 </div>
             )}
 
