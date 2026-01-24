@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Menu, X, LogOut, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -12,10 +13,8 @@ export default function Navbar() {
   const [openMenu, setOpenMenu] = useState(false);
   const [openSearch, setOpenSearch] = useState(false);
   const [q, setQ] = useState("");
-  const [user, setUser] = useState<any>(null);
-  // ✅ UI-only auth state (dummy). Nanti tinggal ganti dari Supabase / backend.
-  // const [isLoggedIn, setIsLoggedIn] = useState(false);
-  // const demoUser = { name: "User", email: "user@email.com" };
+
+  const [user, setUser] = useState<SupabaseUser | null>(null);
 
   const searchRef = useRef<HTMLInputElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -31,51 +30,47 @@ export default function Navbar() {
     []
   );
 
-useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
-    const {data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    }
-  );
-  return () => {
-    listener.subscription.unsubscribe();
-  };
+  // ✅ REAL auth init + listener (email / google / discord)
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setUser(data.user ?? null);
+    };
+
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
-  const init = async () => {
-    const { data, error } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
 
-    if (error || !data.user) {
-      setUser(null);
-      await supabase.auth.signOut();
-      return;
-    }
+  // ✅ name fallback (works for Google/Discord/email)
+  const displayName =
+    (user?.user_metadata?.display_name as string | undefined) ??
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    (user?.user_metadata?.preferred_username as string | undefined) ??
+    user?.email ??
+    "Akun";
 
-    setUser(data.user);
-  };
+  // ✅ avatar fallback (Google often uses picture)
+  const avatarUrl =
+    (user?.user_metadata?.avatar_url as string | undefined) ??
+    (user?.user_metadata?.picture as string | undefined) ??
+    null;
 
-  init();
-
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-        await supabase.auth.signOut();
-        return;
-      }
-
-      // SIGNED_IN / TOKEN_REFRESHED
-      setUser(session?.user ?? null);
-    }
-  );
-
-  return () => {
-    listener.subscription.unsubscribe();
-  };
-}, []);
   // ctrl/cmd + z to open search, ESC to close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -121,8 +116,8 @@ useEffect(() => {
     return pathname.startsWith(href);
   };
 
-  const handleLogout = () => {
-    // UI only
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setOpenMenu(false);
   };
 
@@ -194,36 +189,53 @@ useEffect(() => {
               </button>
 
               {/* ✅ AUTH UI (desktop) */}
-              {!user ? (
+              {!isLoggedIn ? (
                 <>
                   <Link
-                  href="/login"
-                  className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
-                >
-                  Login
-                </Link>
+                    href="/login"
+                    className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
+                  >
+                    Login
+                  </Link>
 
-                <Link
-                  href="/register"
-                  className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
-                >
-                  Daftar
-                </Link>
-              </>) : (
+                  <Link
+                    href="/register"
+                    className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
+                  >
+                    Daftar
+                  </Link>
+                </>
+              ) : (
                 <>
-                {/* <span>{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span> */}
-                <Link
+                  <Link
                     href="/account"
                     className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
-                      <User size={16} className="text-white/75" />
+                    <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-lg bg-white/10 ring-1 ring-white/10">
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarUrl}
+                          alt="avatar"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User size={16} className="text-white/75" />
+                      )}
                     </span>
-                    <span className="text-sm text-white/80">{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span>
+                    <span className="text-sm text-white/80">{displayName}</span>
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 h-10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
+                  >
+                    <LogOut size={16} className="text-white/80" />
+                    Logout
+                  </button>
                 </>
               )}
-              
 
               {/* Mobile buttons */}
               <button
@@ -299,7 +311,7 @@ useEffect(() => {
                 <div className="my-2 h-px bg-white/10" />
 
                 {/* ✅ AUTH UI (mobile) */}
-                {!user ? (
+                {!isLoggedIn ? (
                   <div className="flex flex-col gap-2">
                     <Link
                       href="/login"
@@ -315,18 +327,6 @@ useEffect(() => {
                     >
                       Daftar
                     </Link>
-
-                    {/* demo button (hapus nanti) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenMenu(false);
-                      }}
-                      className="inline-flex h-9 items-center justify-center rounded-lg bg-white/10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
-                      title="Demo: set login true"
-                    >
-                      Demo Login
-                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -335,7 +335,18 @@ useEffect(() => {
                       onClick={() => setOpenMenu(false)}
                       className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white/5 text-sm text-white/85 ring-1 ring-white/10 hover:bg-white/10 transition"
                     >
-                      <User size={16} className="text-white/75" />
+                      <span className="grid h-6 w-6 place-items-center overflow-hidden rounded-md bg-white/10 ring-1 ring-white/10">
+                        {avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={avatarUrl}
+                            alt="avatar"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <User size={16} className="text-white/75" />
+                        )}
+                      </span>
                       Akun
                     </Link>
 
