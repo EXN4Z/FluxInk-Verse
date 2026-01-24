@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Menu, X, LogOut, User } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -13,8 +14,8 @@ export default function Navbar() {
   const [q, setQ] = useState("");
 
   // ✅ UI-only auth state (dummy). Nanti tinggal ganti dari Supabase / backend.
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const demoUser = { name: "User", email: "user@email.com" };
+  // const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // const demoUser = { name: "User", email: "user@email.com" };
 
   const searchRef = useRef<HTMLInputElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -29,7 +30,51 @@ export default function Navbar() {
     ],
     []
   );
+// useEffect(() => {
+//     supabase.auth.getUser().then(({ data }) => {
+//       setUser(data.user);
+//     });
+//     const {data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
+//       setUser(session?.user ?? null);
+//     }
+//   );
+//   return () => {
+//     listener.subscription.unsubscribe();
+//   };
+//   }, []);
 
+//   useEffect(() => {
+//   const init = async () => {
+//     const { data, error } = await supabase.auth.getUser();
+
+//     if (error || !data.user) {
+//       setUser(null);
+//       await supabase.auth.signOut();
+//       return;
+//     }
+
+//     setUser(data.user);
+//   };
+
+//   init();
+
+//   const { data: listener } = supabase.auth.onAuthStateChange(
+//     async (event, session) => {
+//       if (event === "SIGNED_OUT") {
+//         setUser(null);
+//         await supabase.auth.signOut();
+//         return;
+//       }
+
+//       // SIGNED_IN / TOKEN_REFRESHED
+//       setUser(session?.user ?? null);
+//     }
+//   );
+
+//   return () => {
+//     listener.subscription.unsubscribe();
+//   };
+// }, []);
   // ctrl/cmd + z to open search, ESC to close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
