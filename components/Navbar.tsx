@@ -211,7 +211,6 @@ useEffect(() => {
                 </Link>
               </>) : (
                 <>
-                {/* <span>{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span> */}
                 <Link
                     href="/account"
                     className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
@@ -219,7 +218,7 @@ useEffect(() => {
                     <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
                       <User size={16} className="text-white/75" />
                     </span>
-                    <span className="text-sm text-white/80">{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span>
+                    <span className="text-sm text-white/80">{user.user_metadata?.display_name?? user.user_metadata?.full_name?? user.user_metadata?.avatar_url}</span>
                   </Link>
                 </>
               )}
