@@ -1,3 +1,8 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -23,6 +28,35 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+  
+
+
+  const loginWithGoogle = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+    })}
+  const loginWithDiscord = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "discord",
+    })}
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const {data, error} = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if(error) {
+      alert(error.message)
+    } else {
+      alert("login berhasil!")
+      router.push("/")
+    }
+  } 
   return (
     <div className="relative w-full max-w-sm">
       <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 backdrop-blur-xl shadow-xl shadow-black/40">
@@ -37,6 +71,7 @@ export default function LoginPage() {
         <div className="grid gap-2">
           <button
             type="button"
+            onClick={loginWithGoogle}
             className="h-10 w-full rounded-lg bg-black/25 px-4 text-[13px] font-semibold text-white/85 ring-1 ring-white/10 transition hover:bg-black/35 flex items-center justify-center gap-2"
           >
             <GoogleIcon className="h-4 w-4 text-white/80" />
@@ -45,6 +80,7 @@ export default function LoginPage() {
 
           <button
             type="button"
+            onClick={loginWithDiscord}
             className="h-10 w-full rounded-lg bg-black/25 px-4 text-[13px] font-semibold text-white/85 ring-1 ring-white/10 transition hover:bg-black/35 flex items-center justify-center gap-2"
           >
             <DiscordIcon className="h-4 w-4 text-white/80" />

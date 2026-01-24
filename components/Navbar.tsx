@@ -12,7 +12,7 @@ export default function Navbar() {
   const [openMenu, setOpenMenu] = useState(false);
   const [openSearch, setOpenSearch] = useState(false);
   const [q, setQ] = useState("");
-
+  const [user, setUser] = useState<any>(null);
   // ✅ UI-only auth state (dummy). Nanti tinggal ganti dari Supabase / backend.
   // const [isLoggedIn, setIsLoggedIn] = useState(false);
   // const demoUser = { name: "User", email: "user@email.com" };
@@ -30,51 +30,52 @@ export default function Navbar() {
     ],
     []
   );
-// useEffect(() => {
-//     supabase.auth.getUser().then(({ data }) => {
-//       setUser(data.user);
-//     });
-//     const {data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
-//       setUser(session?.user ?? null);
-//     }
-//   );
-//   return () => {
-//     listener.subscription.unsubscribe();
-//   };
-//   }, []);
 
-//   useEffect(() => {
-//   const init = async () => {
-//     const { data, error } = await supabase.auth.getUser();
+useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+    const {data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    }
+  );
+  return () => {
+    listener.subscription.unsubscribe();
+  };
+  }, []);
 
-//     if (error || !data.user) {
-//       setUser(null);
-//       await supabase.auth.signOut();
-//       return;
-//     }
+  useEffect(() => {
+  const init = async () => {
+    const { data, error } = await supabase.auth.getUser();
 
-//     setUser(data.user);
-//   };
+    if (error || !data.user) {
+      setUser(null);
+      await supabase.auth.signOut();
+      return;
+    }
 
-//   init();
+    setUser(data.user);
+  };
 
-//   const { data: listener } = supabase.auth.onAuthStateChange(
-//     async (event, session) => {
-//       if (event === "SIGNED_OUT") {
-//         setUser(null);
-//         await supabase.auth.signOut();
-//         return;
-//       }
+  init();
 
-//       // SIGNED_IN / TOKEN_REFRESHED
-//       setUser(session?.user ?? null);
-//     }
-//   );
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        await supabase.auth.signOut();
+        return;
+      }
 
-//   return () => {
-//     listener.subscription.unsubscribe();
-//   };
-// }, []);
+      // SIGNED_IN / TOKEN_REFRESHED
+      setUser(session?.user ?? null);
+    }
+  );
+
+  return () => {
+    listener.subscription.unsubscribe();
+  };
+}, []);
   // ctrl/cmd + z to open search, ESC to close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -122,7 +123,6 @@ export default function Navbar() {
 
   const handleLogout = () => {
     // UI only
-    setIsLoggedIn(false);
     setOpenMenu(false);
   };
 
@@ -194,54 +194,36 @@ export default function Navbar() {
               </button>
 
               {/* ✅ AUTH UI (desktop) */}
-              {!isLoggedIn ? (
+              {!user ? (
                 <>
                   <Link
-                    href="/login"
-                    className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
-                  >
-                    Login
-                  </Link>
+                  href="/login"
+                  className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
+                >
+                  Login
+                </Link>
 
-                  <Link
-                    href="/register"
-                    className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
-                  >
-                    Daftar
-                  </Link>
-
-                  {/* demo button (hapus nanti) */}
-                  <button
-                    type="button"
-                    onClick={() => setIsLoggedIn(true)}
-                    className="hidden md:inline-flex items-center justify-center rounded-xl bg-white/10 px-4 h-10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
-                    title="Demo: set login true"
-                  >
-                    Demo Login
-                  </button>
-                </>
-              ) : (
+                <Link
+                  href="/register"
+                  className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
+                >
+                  Daftar
+                </Link>
+              </>) : (
                 <>
-                  <Link
+                {/* <span>{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span> */}
+                <Link
                     href="/account"
                     className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
                   >
                     <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
                       <User size={16} className="text-white/75" />
                     </span>
-                    <span className="text-sm text-white/80">{demoUser.name}</span>
+                    <span className="text-sm text-white/80">{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span>
                   </Link>
-
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 h-10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
-                  >
-                    <LogOut size={16} className="text-white/80" />
-                    Logout
-                  </button>
                 </>
               )}
+              
 
               {/* Mobile buttons */}
               <button
@@ -317,7 +299,7 @@ export default function Navbar() {
                 <div className="my-2 h-px bg-white/10" />
 
                 {/* ✅ AUTH UI (mobile) */}
-                {!isLoggedIn ? (
+                {!user ? (
                   <div className="flex flex-col gap-2">
                     <Link
                       href="/login"
@@ -338,7 +320,6 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => {
-                        setIsLoggedIn(true);
                         setOpenMenu(false);
                       }}
                       className="inline-flex h-9 items-center justify-center rounded-lg bg-white/10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
