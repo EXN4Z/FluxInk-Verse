@@ -224,7 +224,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Dots */}
               <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div className="flex items-center gap-2">
                   {IMAGES.map((_, index) => (

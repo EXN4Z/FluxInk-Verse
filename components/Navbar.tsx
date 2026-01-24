@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, LogOut, User } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -12,8 +12,13 @@ export default function Navbar() {
   const [openSearch, setOpenSearch] = useState(false);
   const [q, setQ] = useState("");
 
+  // ✅ UI-only auth state (dummy). Nanti tinggal ganti dari Supabase / backend.
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const demoUser = { name: "User", email: "user@email.com" };
+
   const searchRef = useRef<HTMLInputElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const navItems = useMemo(
     () => [
@@ -25,12 +30,12 @@ export default function Navbar() {
     []
   );
 
-  // ctrl/cmd + k to open search, ESC to close
+  // ctrl/cmd + z to open search, ESC to close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
 
-      if ((e.ctrlKey || e.metaKey) && key === "k") {
+      if ((e.ctrlKey || e.metaKey) && key === "z") {
         e.preventDefault();
         setOpenSearch(true);
         setOpenMenu(false);
@@ -46,22 +51,19 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // click outside to close mobile menu
+  // click outside to close mobile menu (fixed)
   useEffect(() => {
     if (!openMenu) return;
 
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      if (!menuRef.current) return;
+    const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!menuRef.current.contains(target)) setOpenMenu(false);
+      if (menuRef.current?.contains(target)) return;
+      if (menuBtnRef.current?.contains(target)) return;
+      setOpenMenu(false);
     };
 
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("touchstart", onDown);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("touchstart", onDown);
-    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
   }, [openMenu]);
 
   useEffect(() => {
@@ -71,6 +73,12 @@ export default function Navbar() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
+  };
+
+  const handleLogout = () => {
+    // UI only
+    setIsLoggedIn(false);
+    setOpenMenu(false);
   };
 
   return (
@@ -126,7 +134,7 @@ export default function Navbar() {
                 type="button"
                 onClick={() => setOpenSearch(true)}
                 className="hidden md:flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
-                aria-label="Buka pencarian (Ctrl+K)"
+                aria-label="Buka pencarian (Ctrl+z)"
               >
                 <Search size={16} className="text-white/60" />
                 <span className="text-sm text-white/55">Cari komik…</span>
@@ -135,25 +143,60 @@ export default function Navbar() {
                     Ctrl
                   </kbd>
                   <kbd className="rounded-md bg-black/25 px-2 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10">
-                    K
+                    z
                   </kbd>
                 </span>
               </button>
 
-              {/* Auth (desktop) */}
-              <Link
-                href="/login"
-                className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
-              >
-                Login
-              </Link>
+              {/* ✅ AUTH UI (desktop) */}
+              {!isLoggedIn ? (
+                <>
+                  <Link
+                    href="/login"
+                    className="hidden md:inline-flex text-sm text-white/70 hover:text-white transition"
+                  >
+                    Login
+                  </Link>
 
-              <Link
-                href="/register"
-                className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
-              >
-                Daftar
-              </Link>
+                  <Link
+                    href="/register"
+                    className="hidden md:inline-flex items-center justify-center rounded-xl bg-white px-4 h-10 text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
+                  >
+                    Daftar
+                  </Link>
+
+                  {/* demo button (hapus nanti) */}
+                  <button
+                    type="button"
+                    onClick={() => setIsLoggedIn(true)}
+                    className="hidden md:inline-flex items-center justify-center rounded-xl bg-white/10 px-4 h-10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
+                    title="Demo: set login true"
+                  >
+                    Demo Login
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/account"
+                    className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
+                  >
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
+                      <User size={16} className="text-white/75" />
+                    </span>
+                    <span className="text-sm text-white/80">{demoUser.name}</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 h-10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
+                  >
+                    <LogOut size={16} className="text-white/80" />
+                    Logout
+                  </button>
+                </>
+              )}
 
               {/* Mobile buttons */}
               <button
@@ -169,6 +212,7 @@ export default function Navbar() {
               </button>
 
               <button
+                ref={menuBtnRef}
                 type="button"
                 onClick={() => setOpenMenu((v) => !v)}
                 className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition"
@@ -190,7 +234,9 @@ export default function Navbar() {
             className={[
               "md:hidden absolute right-6 top-[64px] w-[260px] origin-top-right",
               "transition duration-200",
-              openMenu ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0",
+              openMenu
+                ? "scale-100 opacity-100"
+                : "pointer-events-none scale-95 opacity-0",
             ].join(" ")}
           >
             <div className="rounded-xl bg-black ring-1 ring-white/10 shadow-xl shadow-black/50 backdrop-blur-lg overflow-hidden">
@@ -222,26 +268,61 @@ export default function Navbar() {
                     );
                   })}
                 </div>
-                
+
                 <div className="my-2 h-px bg-white/10" />
-                
-                {/* auth buttons (column) */}
-                <div className="flex flex-col gap-2">
-                  <Link
-                    href="/login"
-                    onClick={() => setOpenMenu(false)}
-                    className="inline-flex h-9 items-center justify-center rounded-lg bg-white/5 text-sm text-white/80 ring-1 ring-white/10 hover:bg-white/10 transition"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/register"
-                    onClick={() => setOpenMenu(false)}
-                    className="inline-flex h-9 items-center justify-center rounded-lg bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
-                  >
-                    Daftar
-                  </Link>
-                </div>
+
+                {/* ✅ AUTH UI (mobile) */}
+                {!isLoggedIn ? (
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/login"
+                      onClick={() => setOpenMenu(false)}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-white/5 text-sm text-white/80 ring-1 ring-white/10 hover:bg-white/10 transition"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setOpenMenu(false)}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-white text-sm font-semibold text-zinc-950 hover:bg-white/90 transition"
+                    >
+                      Daftar
+                    </Link>
+
+                    {/* demo button (hapus nanti) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoggedIn(true);
+                        setOpenMenu(false);
+                      }}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-white/10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
+                      title="Demo: set login true"
+                    >
+                      Demo Login
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/account"
+                      onClick={() => setOpenMenu(false)}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white/5 text-sm text-white/85 ring-1 ring-white/10 hover:bg-white/10 transition"
+                    >
+                      <User size={16} className="text-white/75" />
+                      Akun
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white/10 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-white/15 transition"
+                    >
+                      <LogOut size={16} className="text-white/80" />
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -273,26 +354,31 @@ export default function Navbar() {
 
               <div className="p-4">
                 <p className="text-xs text-white/55">
-                  Tips: tekan <span className="text-white/80">Enter</span> untuk submit (kalau sudah ada page search),
-                  atau pakai shortcut <span className="text-white/80">Ctrl/⌘ + K</span> kapan aja.
+                  Tips: tekan <span className="text-white/80">Enter</span> untuk
+                  submit (kalau sudah ada page search), atau pakai shortcut{" "}
+                  <span className="text-white/80">Ctrl/⌘ + Z</span> kapan aja.
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {["Trending", "Action", "Romance", "Fantasy", "Slice of Life"].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setQ(tag)}
-                      className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                  {["Trending", "Action", "Romance", "Fantasy", "Slice of Life"].map(
+                    (tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setQ(tag)}
+                        className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
+                      >
+                        {tag}
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             </div>
 
-            <p className="mt-3 text-center text-xs text-white/40">Klik area gelap untuk menutup</p>
+            <p className="mt-3 text-center text-xs text-white/40">
+              Klik area gelap untuk menutup
+            </p>
           </div>
         </div>
       )}
