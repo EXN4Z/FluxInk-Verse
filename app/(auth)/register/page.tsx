@@ -1,3 +1,7 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
+import React, { useState } from "react";
 import Link from "next/link";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -23,6 +27,45 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function RegisterPage() {
+
+  const[email, setEmail] = useState("");
+  const[password, setPassword] = useState("");
+  const[showError, setError] = useState<{message: string; type: "error" | "success"} | null> (null)
+  const[nama, setNama] = useState("")
+
+  const loginWithGoogle = async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+  });
+};
+  const loginWithDiscord = async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "discord",
+  });
+};
+
+  const submit = async(e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if(!email || !password ) {
+      setError({message: "Email dan password harus diisi!", type: "error"})
+      return;
+    }
+    const {data, error} = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {display_name: nama,
+        },
+      }
+    })
+    if(error) {
+      setError({message: error.message, type: "error"})
+      return;
+    } else {
+      setError({message: "Akun berhasil dibuat!", type: "success"})
+    }
+  }
   return (
     <div className="relative w-full max-w-sm">
       <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 backdrop-blur-xl shadow-xl shadow-black/40">
@@ -37,6 +80,7 @@ export default function RegisterPage() {
         <div className="grid gap-2">
           <button
             type="button"
+            onClick={loginWithGoogle}
             className="h-10 w-full rounded-lg bg-black/25 px-4 text-[13px] font-semibold text-white/85 ring-1 ring-white/10 transition hover:bg-black/35 flex items-center justify-center gap-2"
           >
             <GoogleIcon className="h-4 w-4 text-white/80" />
@@ -45,6 +89,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
+            onClick={loginWithDiscord}
             className="h-10 w-full rounded-lg bg-black/25 px-4 text-[13px] font-semibold text-white/85 ring-1 ring-white/10 transition hover:bg-black/35 flex items-center justify-center gap-2"
           >
             <DiscordIcon className="h-4 w-4 text-white/80" />
@@ -59,12 +104,13 @@ export default function RegisterPage() {
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
-        <form className="space-y-3">
+        <form className="space-y-3" onSubmit={submit}>
           <div>
             <label className="text-xs text-white/70">Username</label>
             <input
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-white/25"
               placeholder="contoh_123"
+              onChange={(e) => setNama(e.target.value)}
             />
           </div>
 
@@ -74,6 +120,7 @@ export default function RegisterPage() {
               type="email"
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-white/25"
               placeholder="email@gmail.com"
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -83,9 +130,16 @@ export default function RegisterPage() {
               type="password"
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white ring-1 ring-white/10 outline-none focus:ring-white/25"
               placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-
+          {showError && (
+            <div className={`text-md ${
+                    showError.type === "error" ? 'text-red-600' : 'text-green-600'
+                }`}>
+                    {showError.message}
+                </div>
+          )}
           <button
             type="submit"
             className="h-10 w-full rounded-lg bg-white text-zinc-950 text-sm font-semibold hover:bg-white/90 transition"
