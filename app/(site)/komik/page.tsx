@@ -293,7 +293,7 @@ function GridCard({ c }: { c: ComicItem }) {
 
         <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs text-white/90 ring-1 ring-white/15 backdrop-blur">
           <Eye className="h-3.5 w-3.5 text-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.6)]" />
-          {formatCompactID(c.views)} views
+          {formatCompactID(c.views ?? 0)}
         </div>
       </div>
 
