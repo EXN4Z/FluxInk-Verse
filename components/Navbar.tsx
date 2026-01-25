@@ -23,7 +23,7 @@ export default function Navbar() {
   const navItems = useMemo(
     () => [
       { name: "Home", href: "/" },
-      { name: "Service", href: "/service" },
+      { name: "Komik", href: "/komik" },
       { name: "About", href: "/about" },
       { name: "Pengumuman", href: "/pengumuman" },
     ],
@@ -157,9 +157,6 @@ export default function Navbar() {
                         ].join(" ")}
                       >
                         {item.name}
-                        {active && (
-                          <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-emerald-300 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" />
-                        )}
                       </Link>
                     </li>
                   );
