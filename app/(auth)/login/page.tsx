@@ -95,12 +95,13 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
-        <form className="space-y-3">
+        <form className="space-y-3" onSubmit={submit}>
           <div>
             <label className="text-xs text-white/70">Email</label>
             <input
               type="email"
               placeholder="email@gmail.com"
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white placeholder:text-white/40 ring-1 ring-white/10 outline-none focus:ring-white/25"
             />
           </div>
@@ -110,6 +111,7 @@ export default function LoginPage() {
             <input
               type="password"
               placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white placeholder:text-white/40 ring-1 ring-white/10 outline-none focus:ring-white/25"
             />
           </div>

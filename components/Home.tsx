@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,6 +17,61 @@ const CAPTIONS = [
   { title: "Update Terbaru", desc: "Bab baru rilis rutin & gampang dicari." },
   { title: "Editor’s Pick", desc: "Rekomendasi manhwa & ilustrasi terbaik." },
 ];
+
+// ✅ Dummy data komik list (nanti ganti dari DB/Supabase)
+type ComicItem = {
+  id: string;
+  title: string;
+  slug: string;
+  cover: string;
+  note: string;
+  lastChapter: number;
+  updatedAt: string; // ISO string
+  tags?: string[];
+};
+
+const COMICS: ComicItem[] = [
+  {
+    id: "1",
+    title: "Solo Leveling",
+    slug: "solo-leveling",
+    cover: "/images/populer/image.png",
+    note: "Arc baru dimulai — vibes makin dark & plot twist makin sering.",
+    lastChapter: 58,
+    updatedAt: "2026-01-23T20:15:00+07:00",
+    tags: ["Action", "Fantasy"],
+  },
+  {
+    id: "2",
+    title: "Tonikaku Kawai",
+    slug: "tonikaku-kawai",
+    cover: "/images/populer/image2.png",
+    note: "Slow-burn tapi bikin nagih. Chemistry-nya dapet banget.",
+    lastChapter: 24,
+    updatedAt: "2026-01-22T18:40:00+07:00",
+    tags: ["Romance", "Slice of Life"],
+  },
+  {
+    id: "3",
+    title: "The Promised Neverland",
+    slug: "the-promised-neverland",
+    cover: "/images/populer/image3.png",
+    note: "Update chapter terbaru fokus world-building & fight choreography.",
+    lastChapter: 112,
+    updatedAt: "2026-01-21T09:10:00+07:00",
+    tags: ["Adventure", "Magic"],
+  },
+];
+
+const formatDateID = (iso: string) => {
+  // Pakai timezone Asia/Jakarta biar stabil di SSR/CSR (nggak rawan hydration mismatch)
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(iso));
+};
 
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -260,30 +316,82 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bottom feature row */}
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              title: "UI Modern & Clean",
-              desc: "Tampilan glass + gradient biar premium.",
-            },
-            {
-              title: "Navigasi Cepat",
-              desc: "Cari judul, genre, dan update lebih gampang.",
-            },
-            {
-              title: "Gambar Tajam",
-              desc: "Preview & cover lebih enak dilihat.",
-            },
-          ].map((f) => (
-            <div
-              key={f.title}
-              className="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur transition hover:bg-white/[0.07]"
-            >
-              <p className="text-base font-semibold">{f.title}</p>
-              <p className="mt-2 text-sm text-white/65">{f.desc}</p>
+        {/* ✅ Komik List */}
+        <div className="mt-14">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold">Komik Update Minggu Ini</h2>
+              <p className="mt-1 text-sm text-white/65">
+                Catatan singkat + chapter terakhir + tanggal update terakhir.
+              </p>
             </div>
-          ))}
+
+            <Link
+              href="/komik"
+              className="hidden sm:inline-flex rounded-xl bg-white/5 px-4 py-2 text-sm text-white/70 ring-1 ring-white/10 hover:bg-white/10 hover:text-white transition"
+            >
+              Lihat semua
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {COMICS.map((c) => (
+              <Link
+                key={c.id}
+                href={`/komik/${c.slug}`}
+                className="group rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
+              >
+                <div className="flex gap-4 p-4">
+                  <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+                    <Image
+                      src={c.cover}
+                      alt={c.title}
+                      fill
+                      sizes="80px"
+                      className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{c.title}</p>
+
+                    <p className="mt-1 text-xs text-white/65 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                      {c.note}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                        Ch. {c.lastChapter}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                        Update: {formatDateID(c.updatedAt)}
+                      </span>
+                    </div>
+
+                    {c.tags?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {c.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/55 ring-1 ring-white/10"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <div className="flex items-center justify-between px-4 py-3 text-xs text-white/60">
+                  <span>Lanjut baca chapter terbaru</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

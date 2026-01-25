@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase";
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; 
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -27,11 +28,12 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export default function RegisterPage() {
-
+  const router = useRouter();
   const[email, setEmail] = useState("");
   const[password, setPassword] = useState("");
   const[showError, setError] = useState<{message: string; type: "error" | "success"} | null> (null)
   const[nama, setNama] = useState("")
+  const [ loading, setloading ] = useState(false)
 
   const loginWithGoogle = async () => {
   await supabase.auth.signInWithOAuth({
@@ -47,6 +49,10 @@ export default function RegisterPage() {
   const submit = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if(loading) return
+
+    setloading(true)
+
     if(!email || !password ) {
       setError({message: "Email dan password harus diisi!", type: "error"})
       return;
@@ -59,11 +65,20 @@ export default function RegisterPage() {
         },
       }
     })
+
+    console.log({data, error})
+
+    setloading(false)
+
     if(error) {
       setError({message: error.message, type: "error"})
       return;
     } else {
       setError({message: "Akun berhasil dibuat!", type: "success"})
+      setTimeout(() => {
+        router.push("/login")
+      }, 2000);
+      
     }
   }
   return (
@@ -142,9 +157,10 @@ export default function RegisterPage() {
           )}
           <button
             type="submit"
+            disabled={loading}
             className="h-10 w-full rounded-lg bg-white text-zinc-950 text-sm font-semibold hover:bg-white/90 transition"
           >
-            Sign up
+            {loading ? "memproses....." : "Sign Up"}
           </button>
         </form>
 
