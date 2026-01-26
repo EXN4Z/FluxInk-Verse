@@ -30,33 +30,44 @@ function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
-  
-
+  const [loading, setLoading] = useState(false);
 
   const loginWithGoogle = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-    })}
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${location.origin}/` },
+    });
+    if (error) alert(error.message);
+  };
+
   const loginWithDiscord = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "discord",
-    })}
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: { redirectTo: `${location.origin}/` },
+    });
+    if (error) alert(error.message);
+  };
+
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
 
-    const {data, error} = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if(error) {
-      alert(error.message)
-    } else {
-      alert("login berhasil!")
-      router.push("/")
+    setLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
     }
-  } 
+
+    // redirect PALING AMAN (anti cache / service worker)
+    window.location.assign("/");
+  };
+
   return (
     <div className="relative w-full max-w-sm">
       <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10 backdrop-blur-xl shadow-xl shadow-black/40">
@@ -67,7 +78,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Social connect (UI only) */}
+        {/* Social connect */}
         <div className="grid gap-2">
           <button
             type="button"
@@ -95,13 +106,13 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-white/10" />
         </div>
 
-        <form className="space-y-3" onSubmit={submit}>
+        <form className="space-y-3">
           <div>
             <label className="text-xs text-white/70">Email</label>
             <input
               type="email"
+              required
               placeholder="email@gmail.com"
-              onChange={(e) => setEmail(e.target.value)}
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white placeholder:text-white/40 ring-1 ring-white/10 outline-none focus:ring-white/25"
             />
           </div>
@@ -110,36 +121,24 @@ export default function LoginPage() {
             <label className="text-xs text-white/70">Password</label>
             <input
               type="password"
+              required
               placeholder="••••••••"
-              onChange={(e) => setPassword(e.target.value)}
               className="mt-1.5 h-10 w-full rounded-lg bg-black/25 px-4 text-sm text-white placeholder:text-white/40 ring-1 ring-white/10 outline-none focus:ring-white/25"
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs">
-            <label className="flex items-center gap-2 text-white/70">
-              <input type="checkbox" className="accent-white" />
-              Ingat aku!
-            </label>
-            <button type="button" className="text-white/70 hover:text-white">
-              Lupa password?
-            </button>
-          </div>
-
           <button
             type="submit"
-            className="h-10 w-full rounded-lg bg-white text-zinc-950 text-sm font-semibold hover:bg-white/90 transition"
+            disabled={loading}
+            className="h-10 w-full rounded-lg bg-white text-zinc-950 text-sm font-semibold hover:bg-white/90 transition disabled:opacity-60"
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        {/* Back to Home */}
+        {/* Back */}
         <div className="mt-3 text-center">
-          <Link
-            href="/"
-            className="text-xs text-white/60 hover:text-white transition"
-          >
+          <Link href="/" className="text-xs text-white/60 hover:text-white transition">
             ← Kembali ke Halaman awal
           </Link>
         </div>

@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { Flame } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getPopularComics, formatDateID } from "@/lib/comics";
 
 const SLIDE_INTERVAL = 3500;
 
@@ -17,61 +19,6 @@ const CAPTIONS = [
   { title: "Update Terbaru", desc: "Bab baru rilis rutin & gampang dicari." },
   { title: "Editor’s Pick", desc: "Rekomendasi manhwa & ilustrasi terbaik." },
 ];
-
-// ✅ Dummy data komik list (nanti ganti dari DB/Supabase)
-type ComicItem = {
-  id: string;
-  title: string;
-  slug: string;
-  cover: string;
-  note: string;
-  lastChapter: number;
-  updatedAt: string; // ISO string
-  tags?: string[];
-};
-
-const COMICS: ComicItem[] = [
-  {
-    id: "1",
-    title: "Solo Leveling",
-    slug: "solo-leveling",
-    cover: "/images/populer/image.png",
-    note: "Arc baru dimulai — vibes makin dark & plot twist makin sering.",
-    lastChapter: 58,
-    updatedAt: "2026-01-23T20:15:00+07:00",
-    tags: ["Action", "Fantasy"],
-  },
-  {
-    id: "2",
-    title: "Tonikaku Kawai",
-    slug: "tonikaku-kawai",
-    cover: "/images/populer/image2.png",
-    note: "Slow-burn tapi bikin nagih. Chemistry-nya dapet banget.",
-    lastChapter: 24,
-    updatedAt: "2026-01-22T18:40:00+07:00",
-    tags: ["Romance", "Slice of Life"],
-  },
-  {
-    id: "3",
-    title: "The Promised Neverland",
-    slug: "the-promised-neverland",
-    cover: "/images/populer/image3.png",
-    note: "Update chapter terbaru fokus world-building & fight choreography.",
-    lastChapter: 112,
-    updatedAt: "2026-01-21T09:10:00+07:00",
-    tags: ["Adventure", "Magic"],
-  },
-];
-
-const formatDateID = (iso: string) => {
-  // Pakai timezone Asia/Jakarta biar stabil di SSR/CSR (nggak rawan hydration mismatch)
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  }).format(new Date(iso));
-};
 
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -90,6 +37,9 @@ export default function Home() {
   }, [currentIndex, paused]);
 
   const caption = useMemo(() => CAPTIONS[currentIndex % CAPTIONS.length], [currentIndex]);
+
+  const popularComics = getPopularComics(6);
+
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white">
@@ -215,7 +165,7 @@ export default function Home() {
 
                 {/* top tag */}
                 <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs text-white/90 ring-1 ring-white/15 backdrop-blur">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                  <Flame className="h-3.5 w-3.5 text-orange-400 drop-shadow-[0_0_6px_rgba(251,146,60,0.6)]" />
                   Trending
                 </div>
 
@@ -320,7 +270,7 @@ export default function Home() {
         <div className="mt-14">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold">Komik Update Minggu Ini</h2>
+              <h2 className="text-xl font-bold">Komik Populer Minggu Ini</h2>
               <p className="mt-1 text-sm text-white/65">
                 Catatan singkat + chapter terakhir + tanggal update terakhir.
               </p>
@@ -335,7 +285,7 @@ export default function Home() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {COMICS.map((c) => (
+            {popularComics.map((c) => (
               <Link
                 key={c.id}
                 href={`/komik/${c.slug}`}
