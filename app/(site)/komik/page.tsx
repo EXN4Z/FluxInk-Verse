@@ -6,6 +6,7 @@ import { Flame, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eye } from "lucide-react";
 import { COMICS, ComicItem, formatCompactID, formatDateID } from "@/lib/comics";
+import { supabase } from "@/lib/supabase";
 
 const SORTS = [
   { value: "popular", label: "Paling Populer" },
@@ -20,6 +21,11 @@ export default function KomikPage() {
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string>("All");
   const [sort, setSort] = useState<SortKey>("popular");
+
+
+  const {data: genre, error} = await supabase
+  .from('genre')
+  .select("id, genre");
 
   const tags = useMemo(() => {
     const set = new Set<string>();
@@ -172,26 +178,22 @@ export default function KomikPage() {
           </div>
 
           {/* Tags filter */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {tags.map((t) => {
-              const active = t === tag;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTag(t)}
-                  className={[
-                    "rounded-full px-3 py-1 text-xs ring-1 transition",
-                    active
-                      ? "bg-white/15 text-white ring-white/20"
-                      : "bg-white/5 text-white/70 ring-white/10 hover:bg-white/10 hover:text-white",
-                  ].join(" ")}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
+          <div>
+      {genre.map((genre) => (
+        <div key={genre.id}>
+
+          {/* tampilkan semua genre */}
+          <ul>
+            {genre.genre?.map((g: string, i: number) => (
+              <li key={i}>{g}</li>
+            ))}
+          </ul>
+
+          {/* tampilkan salah satu genre */}
+          <p>Genre utama: {genre.genre?.[0]}</p>
+        </div>
+      ))}
+    </div>
 
           <div className="mt-4 text-xs text-white/60">
             Menampilkan <span className="text-white/85 font-semibold">{filtered.length}</span> komik

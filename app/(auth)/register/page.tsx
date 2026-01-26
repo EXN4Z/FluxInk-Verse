@@ -75,7 +75,7 @@ export default function RegisterPage() {
       setError({message: error.message, type: "error"})
       return;
     } else {
-      setError({message: "Akun berhasil dibuat!", type: "success"})
+      setError({message: "Akun berhasil dibuat! Aktivasi akun sudah dikirim lewat email", type: "success"})
       setTimeout(() => {
         router.push("/login")
       }, 2000);
