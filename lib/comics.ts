@@ -93,7 +93,7 @@ export const COMICS: ComicItem[] = [
     id: "6",
     title: "Chainsaw Man",
     slug: "chainsaw-man",
-    cover: "/images/populer/image3.png",
+    cover: "/images/populer/11670226210.jpg",
     note: "Chaos tapi emotional. Paneling unik banget.",
     lastChapter: 156,
     updatedAt: "2026-01-18T10:00:00+07:00",
