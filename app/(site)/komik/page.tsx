@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Flame, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye } from "lucide-react";
 import { COMICS, ComicItem, formatCompactID, formatDateID } from "@/lib/comics";
 import { supabase } from "@/lib/supabase";
@@ -21,11 +21,38 @@ export default function KomikPage() {
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string>("All");
   const [sort, setSort] = useState<SortKey>("popular");
+  const [genres, setGenres] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const fetchGenre = async () => {
+    const { data, error } = await supabase
+      .from("genre")
+      .select("id, genre");
+
+    if (!error && data) {
+      // genre sudah array → langsung flatten
+      const parsed = data.flatMap((g) =>
+        Array.isArray(g.genre) ? g.genre : []
+      );
+
+      // hilangkan duplikat
+      const unique = [...new Set(parsed)];
+
+      // samakan struktur dengan UI
+      setGenres(unique.map((genre, i) => ({
+        id: i,
+        genre,
+      })));
+    }
+
+    setLoading(false);
+  };
+
+  fetchGenre();
+}, []);
 
 
-  const {data: genre, error} = await supabase
-  .from('genre')
-  .select("id, genre");
 
   const tags = useMemo(() => {
     const set = new Set<string>();
@@ -178,22 +205,28 @@ export default function KomikPage() {
           </div>
 
           {/* Tags filter */}
-          <div>
-      {genre.map((genre) => (
-        <div key={genre.id}>
+          <div className="mt-4 flex flex-wrap gap-2">
+  {loading && (
+    <span className="text-xs text-white/50">Loading genre...</span>
+  )}
 
-          {/* tampilkan semua genre */}
-          <ul>
-            {genre.genre?.map((g: string, i: number) => (
-              <li key={i}>{g}</li>
-            ))}
-          </ul>
+  {!loading &&
+    genres.map((g) => (
+      <button
+        key={g.id}
+        onClick={() => setTag(g.genre)}
+        className={`rounded-full px-3 py-1 text-xs ring-1 transition
+          ${
+            tag === g.genre
+              ? "bg-white text-black ring-white"
+              : "bg-white/5 text-white/70 ring-white/10 hover:bg-white/10"
+          }`}
+      >
+        {g.genre}
+      </button>
+    ))}
+</div>
 
-          {/* tampilkan salah satu genre */}
-          <p>Genre utama: {genre.genre?.[0]}</p>
-        </div>
-      ))}
-    </div>
 
           <div className="mt-4 text-xs text-white/60">
             Menampilkan <span className="text-white/85 font-semibold">{filtered.length}</span> komik
