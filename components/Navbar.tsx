@@ -24,8 +24,8 @@ export default function Navbar() {
     () => [
       { name: "Home", href: "/" },
       { name: "Komik", href: "/komik" },
-      { name: "About", href: "/about" },
       { name: "Pengumuman", href: "/pengumuman" },
+      { name: "Profile", href: "/profile" },
     ],
     []
   );
@@ -65,10 +65,18 @@ export default function Navbar() {
     user?.email ??
     "Akun";
 
-  // ✅ avatar fallback (Google often uses picture)
+  // ✅ avatar fallback (custom > provider > placeholder)
+  type IdentityData = { avatar_url?: string; picture?: string };
+  const identityData =
+    (user?.identities?.[0]?.identity_data as IdentityData | undefined) ??
+    undefined;
+
   const avatarUrl =
+    (user?.user_metadata?.custom_avatar_url as string | undefined) ??
     (user?.user_metadata?.avatar_url as string | undefined) ??
     (user?.user_metadata?.picture as string | undefined) ??
+    identityData?.avatar_url ??
+    identityData?.picture ??
     null;
 
   // ctrl/cmd + z to open search, ESC to close
@@ -119,6 +127,7 @@ export default function Navbar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setOpenMenu(false);
+    setOpenSearch(false);
   };
 
   return (
@@ -185,7 +194,7 @@ export default function Navbar() {
                 </span>
               </button>
 
-              {/* ✅ AUTH UI (desktop) */}
+              {/* AUTH UI (desktop) */}
               {!isLoggedIn ? (
                 <>
                   <Link
@@ -204,9 +213,8 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                {/* <span>{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span> */}
-                <Link
-                    href="/account"
+                  <Link
+                    href="/profile"
                     className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 h-10 ring-1 ring-white/10 hover:bg-white/10 transition"
                   >
                     <span className="grid h-7 w-7 place-items-center overflow-hidden rounded-lg bg-white/10 ring-1 ring-white/10">
@@ -221,7 +229,9 @@ export default function Navbar() {
                         <User size={16} className="text-white/75" />
                       )}
                     </span>
-                    <span className="text-sm text-white/80">{user.user_metadata?.display_name?? user.user_metadata?.full_name}</span>
+                    <span className="text-sm text-white/80">
+                      {displayName}
+                    </span>
                   </Link>
 
                   <button
@@ -265,7 +275,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* MOBILE DROPDOWN GLASS (compact) */}
+          {/* MOBILE DROPDOWN */}
           <div
             ref={menuRef}
             className={[
@@ -278,7 +288,6 @@ export default function Navbar() {
           >
             <div className="rounded-xl bg-black ring-1 ring-white/10 shadow-xl shadow-black/50 backdrop-blur-lg overflow-hidden">
               <div className="p-2">
-                {/* nav items */}
                 <div className="grid gap-1">
                   {navItems.map((item) => {
                     const active = isActive(item.href);
@@ -308,7 +317,6 @@ export default function Navbar() {
 
                 <div className="my-2 h-px bg-white/10" />
 
-                {/* ✅ AUTH UI (mobile) */}
                 {!isLoggedIn ? (
                   <div className="flex flex-col gap-2">
                     <Link
@@ -329,7 +337,7 @@ export default function Navbar() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     <Link
-                      href="/account"
+                      href="/profile"
                       onClick={() => setOpenMenu(false)}
                       className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white/5 text-sm text-white/85 ring-1 ring-white/10 hover:bg-white/10 transition"
                     >
@@ -345,7 +353,7 @@ export default function Navbar() {
                           <User size={16} className="text-white/75" />
                         )}
                       </span>
-                      Akun
+                      Profile
                     </Link>
 
                     <button
@@ -390,24 +398,9 @@ export default function Navbar() {
               <div className="p-4">
                 <p className="text-xs text-white/55">
                   Tips: tekan <span className="text-white/80">Enter</span> untuk
-                  submit (kalau sudah ada page search), atau pakai shortcut{" "}
-                  <span className="text-white/80">Ctrl/⌘ + Z</span> kapan aja.
+                  submit, atau pakai shortcut{" "}
+                  <span className="text-white/80">Ctrl/⌘ + Z</span>.
                 </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {["Trending", "Action", "Romance", "Fantasy", "Slice of Life"].map(
-                    (tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => setQ(tag)}
-                        className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10 hover:bg-white/10 transition"
-                      >
-                        {tag}
-                      </button>
-                    )
-                  )}
-                </div>
               </div>
             </div>
 
