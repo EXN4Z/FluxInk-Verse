@@ -54,7 +54,8 @@ export default function RegisterPage() {
     setloading(true)
 
     if(!email || !password ) {
-      setError({message: "Email dan password harus diisi!", type: "error"})
+      setError({message: "Email dan password harus diisi!", type: "error"});
+      setloading(false);
       return;
     }
     const {data, error} = await supabase.auth.signUp({
