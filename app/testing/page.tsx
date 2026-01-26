@@ -5,8 +5,11 @@ import { useEffect, useState } from "react";
 
 type Comic = {
   id: number;
-  title: string;
+  judul_buku: string;
+  deskripsi:string;
   cover_url: string;
+  author: string;
+  chapter: number;
 };
 
 export default function AddComic() {
@@ -14,12 +17,18 @@ export default function AddComic() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [comics, setComics] = useState<Comic[]>([]);
+  const [desc, setDesc] = useState("");
+  const [author, setAuthor] = useState("");
+  const [chap, setChap] = useState<number>(0);
+  const [genre, setGenres] = useState<string[]>([]);
+  const [selectedGenre, setSelectedGenres] = useState<string[]>([]);
+  const [currentGenre, setCurrentGenre] = useState("");
 
   // 🔹 ambil data awal
   useEffect(() => {
     const fetchComics = async () => {
       const { data, error } = await supabase
-        .from("comics")
+        .from("komik")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -30,6 +39,26 @@ export default function AddComic() {
 
     fetchComics();
   }, []);
+ useEffect(() => {
+  const fetchGenre = async () => {
+    const { data, error } = await supabase
+      .from("genre")
+      .select("genre");
+
+    if (!error && data) {
+      const flattened = data.flatMap((row) =>
+        Array.isArray(row.genre) ? row.genre : []
+      );
+
+      const unique = [...new Set(flattened)];
+
+      setGenres(unique);
+    }
+  };
+
+  fetchGenre();
+}, []);
+
 
   const handleSubmit = async () => {
     if (!title || !file) {
@@ -62,10 +91,14 @@ export default function AddComic() {
 
       // 3️⃣ insert ke database + ambil data baru
       const { data: newComic, error: insertError } = await supabase
-        .from("comics")
+        .from("komik")
         .insert({
-          title,
+          judul_buku: title,
+          deskripsi: desc,
           cover_url: publicData.publicUrl,
+          author: author,
+          chapter: chap,
+          genre: selectedGenre,
         })
         .select()
         .single();
@@ -78,6 +111,9 @@ export default function AddComic() {
       // reset form
       setTitle("");
       setFile(null);
+      setDesc("");
+      setAuthor("");
+      setChap(0);
 
       alert("Komik berhasil ditambahkan ✅");
     } catch (err: any) {
@@ -99,6 +135,71 @@ export default function AddComic() {
           onChange={(e) => setTitle(e.target.value)}
           className="border p-2 w-full"
         />
+        <input
+          type="text"
+          placeholder="deskripsi komik"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          className="border p-2 w-full"
+        />
+        <input
+          type="text"
+          placeholder="Author komik"
+          value={author}
+          onChange={(e) => setAuthor(e.target.value)}
+          className="border p-2 w-full"
+        />
+        <input
+          type="number"
+          placeholder="Chapter Komik"
+          value={chap}
+          onChange={(e) => setChap(Number(e.target.value))}
+        />
+        <div className="flex flex-wrap gap-2 mt-2">
+        <select
+          value={currentGenre}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return;
+
+            if (selectedGenre.includes(value)) return;
+
+            setSelectedGenres((prev) => [...prev, value]);
+            setCurrentGenre(""); // reset select
+          }}
+          className="border p-2 w-full"
+        >
+          <option value="">Pilih genre</option>
+          {genre.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+
+<div className="flex flex-wrap gap-2 mt-2">
+  {selectedGenre.map((g) => (
+    <span
+      key={g}
+      className="bg-blue-100 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+    >
+      {g}
+      <button
+        type="button"
+        onClick={() =>
+          setSelectedGenres((prev) => prev.filter((x) => x !== g))
+        }
+        className="text-red-500 font-bold"
+      >
+        ×
+      </button>
+    </span>
+  ))}
+</div>
+
+</div>
+
+
 
         <input
           type="file"
@@ -121,11 +222,11 @@ export default function AddComic() {
           <div key={comic.id} className="border rounded p-2">
             <img
               src={comic.cover_url}
-              alt={comic.title}
+              alt={comic.judul_buku}
               className="w-full h-48 object-cover rounded"
             />
             <p className="mt-2 font-semibold text-center">
-              {comic.title}
+              {comic.judul_buku}
             </p>
           </div>
         ))}
