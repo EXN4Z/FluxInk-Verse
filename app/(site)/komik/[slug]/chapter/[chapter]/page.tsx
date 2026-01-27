@@ -27,6 +27,12 @@ export default async function ChapterPage({
 
   if (komikErr || !komik) notFound();
 
+  // tambah view komik (fire and forget)
+await supabase
+  .from("komik")
+  .update({ view: (komik.view ?? 0) + 1 })
+  .eq("id", komik.id);
+
   // 2) ambil chapter row dari komik_chapters
   const { data: chapterRow, error: chapterErr } = await supabase
     .from("komik_chapters")
