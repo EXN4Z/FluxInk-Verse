@@ -171,7 +171,7 @@ export default function AddComic() {
         >
           <option value="">Pilih genre</option>
           {genre.map((g) => (
-            <option key={g} value={g}>
+            <option key={g} value={g} className="text-black bg-gray-500">
               {g}
             </option>
           ))}
@@ -181,7 +181,7 @@ export default function AddComic() {
   {selectedGenre.map((g) => (
     <span
       key={g}
-      className="bg-blue-100 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+      className="bg-blue-100 px-3 py-1 rounded-full text-sm flex items-center gap-2 text-black"
     >
       {g}
       <button

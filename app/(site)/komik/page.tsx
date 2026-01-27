@@ -23,6 +23,7 @@ export default function KomikPage() {
   const [sort, setSort] = useState<SortKey>("popular");
   const [genres, setGenres] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [comic, setComic] = useState<ComicItem[]>([]);
 
 useEffect(() => {
   const fetchGenre = async () => {
@@ -52,20 +53,56 @@ useEffect(() => {
   fetchGenre();
 }, []);
 
+useEffect(() => {
+  const getComic = async () => {
+    const { data, error } = await supabase
+      .from("komik")
+      .select("*"); // bisa juga select kolom tertentu
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (data) {
+      // mapping dari DB ke ComicItem supaya nama properti cocok
+      const mapped: ComicItem[] = (data as any[]).map((c) => ({
+        id: c.id,
+        title: c.judul_buku,  // map dari DB
+        slug: c.slug,
+        cover: c.cover_url,
+        note: c.deskripsi,
+        lastChapter: c.chapter,
+        updatedAt: c.updated_at,
+        tags: c.genre,
+        author: c.author,
+        status: c.status,
+        rating: c.rating,
+        views: c.view,
+      }));
+
+      setComic(mapped);
+    }
+  };
+
+  getComic();
+}, []);
+
+
 
 
   const tags = useMemo(() => {
     const set = new Set<string>();
-    COMICS.forEach((c) => c.tags?.forEach((t) => set.add(t)));
+    comic.forEach((c) => c.tags?.forEach((t) => set.add(t)));
     return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b, "id-ID"))];
   }, []);
 
   const populer = useMemo(() => {
-    return [...COMICS].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6);
-  }, []);
+    return [...comic].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6);
+  }, [comic]);
 
   const filtered = useMemo(() => {
-    let data = [...COMICS];
+    let data =  [...comic];
 
     const qq = q.trim().toLowerCase();
     if (qq) {
@@ -97,7 +134,7 @@ useEffect(() => {
     }
 
     return data;
-  }, [q, tag, sort]);
+  }, [q, tag, sort, comic]);
 
   const clearFilters = () => {
     setQ("");
@@ -317,13 +354,21 @@ function GridCard({ c }: { c: ComicItem }) {
       className="group overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
     >
       <div className="relative h-44">
-        <Image
-          src={c.cover}
-          alt={c.title}
-          fill
-          sizes="(max-width: 1024px) 50vw, 33vw"
-          className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
-        />
+  {c.cover && c.cover.trim() !== "" ? (
+      <Image
+        src={c.cover}
+        alt={c.title}
+        fill
+        sizes="64px"
+        className="object-cover object-top"
+        unoptimized
+      />
+    ) : (
+      <div className="flex h-full w-full items-center justify-center bg-white/20 text-xs text-white/50">
+        No Image
+      </div>
+    )}
+
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
 
         <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs text-white/90 ring-1 ring-white/15 backdrop-blur">

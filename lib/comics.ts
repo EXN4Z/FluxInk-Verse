@@ -196,7 +196,13 @@ export const getPopularComics = (limit = 6) => {
     .slice(0, limit);
 };
 
-export const formatDateID = (iso: string) => {
+export const formatDateID = (iso: string | null) => {
+  if (!iso) return "-"
+
+  const date = new Date(iso)
+
+  if(isNaN(date.getTime())) return "-"
+
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
