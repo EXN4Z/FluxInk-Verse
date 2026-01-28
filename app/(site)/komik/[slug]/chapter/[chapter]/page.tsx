@@ -3,7 +3,17 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabase-server";
 
-type PageRow = { page_no: number; image_path: string };
+type PageRow = {
+  page_no: number;
+  image_path: string;
+};
+
+type KomikRow = {
+  id: number;
+  slug: string;
+  judul_buku: string;
+  view: number | null;
+};
 
 export default async function ChapterPage({
   params,
@@ -21,17 +31,17 @@ export default async function ChapterPage({
   // 1) ambil komik dari DB pakai slug
   const { data: komik, error: komikErr } = await supabase
     .from("komik")
-    .select("id, slug, judul_buku")
+    .select("id, slug, judul_buku, view")
     .eq("slug", slug)
-    .single();
+    .single<KomikRow>();
 
   if (komikErr || !komik) notFound();
 
   // tambah view komik (fire and forget)
-await supabase
-  .from("komik")
-  .update({ view: (komik.view ?? 0) + 1 })
-  .eq("id", komik.id);
+  await supabase
+    .from("komik")
+    .update({ view: (komik.view ?? 0) + 1 })
+    .eq("id", komik.id);
 
   // 2) ambil chapter row dari komik_chapters
   const { data: chapterRow, error: chapterErr } = await supabase
@@ -88,25 +98,37 @@ await supabase
 
         <h1 className="mt-6 text-2xl font-extrabold">
           Chapter {chNum}
-          {chapterRow.title ? <span className="text-white/60 font-normal"> — {chapterRow.title}</span> : null}
+          {chapterRow.title ? (
+            <span className="text-white/60 font-normal"> — {chapterRow.title}</span>
+          ) : null}
         </h1>
 
-        <div className="mt-6">
+        <div className="mt-6 space-y-4">
           {Array.isArray(pages) && pages.length ? (
             pages.map((p: PageRow) => {
-              const { data } = supabase.storage.from(bucket).getPublicUrl(p.image_path);
-              const url = data.publicUrl;
+              const { data } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(p.image_path);
 
               return (
-                <div key={p.page_no} className="overflow-hidden bg-white/5 ring-1 ring-white/10">
-                  <img src={url} alt={`Page ${p.page_no}`} className="w-full h-auto" loading="lazy" />
+                <div
+                  key={p.page_no}
+                  className="overflow-hidden bg-white/5 ring-1 ring-white/10"
+                >
+                  <img
+                    src={data.publicUrl}
+                    alt={`Page ${p.page_no}`}
+                    className="w-full h-auto"
+                    loading="lazy"
+                  />
                 </div>
               );
             })
           ) : (
             <div className="rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
               <p className="text-sm text-white/70">
-                Belum ada gambar untuk chapter ini. Upload ke bucket <b>{bucket}</b> lalu isi tabel <b>komik_pages</b>.
+                Belum ada gambar untuk chapter ini. Upload ke bucket{" "}
+                <b>{bucket}</b> lalu isi tabel <b>komik_pages</b>.
               </p>
             </div>
           )}
