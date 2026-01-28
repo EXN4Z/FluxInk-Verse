@@ -4,9 +4,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Eye, ArrowLeft, Star, BookOpen, Calendar } from "lucide-react";
 
-import { formatCompactID, formatDateID } from "@/lib/comics";
+import { ComicItem, formatCompactID, formatDateID } from "@/lib/comics";
 import ChapterList from "./ChapterList";
-import { supabase } from "@/lib/supabase";
+
+import { createClient } from "@supabase/supabase-js";
 
 type Chapter = {
   number: number;
@@ -17,58 +18,91 @@ type Chapter = {
 
 const VOLUME_SIZE = 10;
 
+// ⛔️ generateStaticParams DIHAPUS karena sebelumnya pakai COMICS (dummy) → slug DB selalu 404
+// export function generateStaticParams() { ... }
+
+function supabaseServer() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, anon);
+}
+
 export default async function KomikDetailPage({
   params,
 }: {
+  // Next 16 (Turbopack) bisa kasih params sebagai Promise
   params: Promise<{ slug?: string | string[] }> | { slug?: string | string[] };
 }) {
-  const awaitedParams = await params;
+  const awaitedParams = await params; // ✅ aman walau params bukan Promise
   const raw = awaitedParams?.slug;
   const slug = Array.isArray(raw) ? raw[0] : raw;
 
   if (!slug) notFound();
 
-  const key = String(slug).trim().toLowerCase();
+  const key = String(slug).trim(); // slug DB biasanya case-sensitive, jangan di-lowercase kalau kamu gak konsisten
+  if (!key) notFound();
 
-  // 1) ambil komik dari DB (tabel: komik)
+  const supabase = supabaseServer();
+
+  // 1) ambil komik by slug dari DB
   const { data: komik, error: komikErr } = await supabase
     .from("komik")
     .select(
-      "id, judul_buku, deskripsi, author, artist, cover_url, slug, view, chapter, genre, status, type, rating, created_at, updated_at"
+      "id, slug, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, status, rating, view"
     )
     .eq("slug", key)
     .single();
 
   if (komikErr || !komik) notFound();
 
-  // 2) ambil chapters dari DB (tabel: komik_chapters)
-  const { data: chapterRows, error: chErr } = await supabase
+  // 2) increment view (best-effort)
+  // kalau kamu mau atomic anti race, nanti gue bikinin RPC. Ini cukup buat sekarang.
+  try {
+    await supabase
+      .from("komik")
+      .update({ view: (komik.view ?? 0) + 1 })
+      .eq("id", komik.id);
+  } catch {
+    // ignore
+  }
+
+  // 3) ambil chapters dari komik_chapters
+  const { data: chaptersRaw } = await supabase
     .from("komik_chapters")
     .select("number, title, volume, released_at")
     .eq("komik_id", komik.id)
     .order("number", { ascending: true });
 
-  if (chErr) notFound();
-
-  // map ke format ChapterList
-  const chapters: Chapter[] = (chapterRows ?? []).map((c: any) => ({
-    number: Number(c.number),
-    title: c.title ?? undefined,
-    volume: c.volume ?? undefined,
-    releasedAt: c.released_at ?? undefined,
+  const chapters: Chapter[] = (chaptersRaw ?? []).map((ch: any) => ({
+    number: Number(ch.number),
+    title: ch.title ?? undefined,
+    volume: ch.volume ?? undefined,
+    releasedAt: ch.released_at ?? undefined,
   }));
 
-  const totalChaptersFromDb = chapters.length;
-  const fallbackTotal = Number(komik.chapter ?? 0);
-  const totalChapters = totalChaptersFromDb || fallbackTotal || 0;
+  // 4) mapping DB → ComicItem (biar UI bawah tetep sama)
+  const comic: ComicItem = {
+    id: komik.id,
+    title: komik.judul_buku ?? "Untitled",
+    slug: komik.slug,
+    cover: komik.cover_url || "", // UI Image butuh string; kalau kosong dan Image error, pastiin cover_url ada
+    note: komik.deskripsi ?? "",
+    lastChapter: komik.chapter ?? chapters.length ?? 0,
+    updatedAt: komik.updated_at ?? new Date().toISOString(),
+    tags: Array.isArray(komik.genre) ? komik.genre : [],
+    author: komik.author ?? "",
+    status: komik.status ?? "",
+    rating: komik.rating ?? undefined,
+    views: komik.view ?? 0,
+  };
+
+  const totalChapters = chapters.length || comic.lastChapter || 0;
   const totalVolumes = Math.max(1, Math.ceil(totalChapters / VOLUME_SIZE));
 
-  const synopsis = (komik.deskripsi ?? "").trim() || "Belum ada sinopsis.";
-
-  const title = komik.judul_buku;
-  const cover = komik.cover_url || "";
-  const views = Number(komik.view ?? 0);
-  const rating = komik.rating ?? null;
+  const synopsis =
+    (comic as ComicItem & { synopsis?: string }).synopsis?.trim() ||
+    comic.note?.trim() ||
+    "Belum ada sinopsis.";
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white">
@@ -83,107 +117,119 @@ export default async function KomikDetailPage({
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
           {/* Cover */}
-          <div className="overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
-            <div className="relative aspect-[3/4] w-full">
-              {cover ? (
-                <Image
-                  src={cover}
-                  alt={title}
-                  fill
-                  className="object-cover object-top"
-                  sizes="(max-width: 1024px) 100vw, 320px"
-                  priority
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-white/60">
-                  No cover
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+          <div className="rounded-3xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+              <Image
+                src={comic.cover}
+                alt={comic.title}
+                fill
+                sizes="(max-width: 1024px) 100vw, 320px"
+                className="object-cover object-top"
+                unoptimized
+              />
             </div>
 
-            <div className="p-4">
-              <p className="text-lg font-extrabold">{title}</p>
-              <p className="mt-1 text-xs text-white/60 line-clamp-3">{synopsis}</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Eye className="h-4 w-4" />
-                    Views
-                  </div>
-                  <div className="mt-1 text-white font-semibold">{formatCompactID(views)}</div>
-                </div>
-
-                <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Star className="h-4 w-4" />
-                    Rating
-                  </div>
-                  <div className="mt-1 text-white font-semibold">{rating ?? "—"}</div>
-                </div>
-
-                <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <BookOpen className="h-4 w-4" />
-                    Chapter
-                  </div>
-                  <div className="mt-1 text-white font-semibold">{totalChapters || 0}</div>
-                </div>
-
-                <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Calendar className="h-4 w-4" />
-                    Update
-                  </div>
-                  <div className="mt-1 text-white font-semibold">
-                    {formatDateID(komik.updated_at ?? komik.created_at)}
-                  </div>
-                </div>
-              </div>
-
-              {Array.isArray(komik.genre) && komik.genre.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {komik.genre.slice(0, 8).map((g: string) => (
-                    <span
-                      key={g}
-                      className="rounded-full bg-white/10 px-3 py-1 text-[11px] text-white/80 ring-1 ring-white/10"
-                    >
-                      {g}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="mt-3 text-xs text-white/60">
-                <div>Author: <span className="text-white/85 font-semibold">{komik.author ?? "—"}</span></div>
-                <div>Artist: <span className="text-white/85 font-semibold">{komik.artist ?? "—"}</span></div>
-                <div>Status: <span className="text-white/85 font-semibold">{komik.status ?? "—"}</span></div>
-                <div>Type: <span className="text-white/85 font-semibold">{komik.type ?? "—"}</span></div>
-                <div>Volumes: <span className="text-white/85 font-semibold">{totalVolumes}</span></div>
-              </div>
+            <div className="mt-4 grid gap-2 text-sm text-white/75">
+              <Stat
+                label="Views"
+                value={formatCompactID(comic.views ?? 0)}
+                icon={<Eye className="h-4 w-4 text-sky-400" />}
+              />
+              <Stat
+                label="Rating"
+                value={comic.rating?.toFixed(1) ?? "—"}
+                icon={<Star className="h-4 w-4 text-yellow-300" />}
+              />
+              <Stat
+                label="Update"
+                value={formatDateID(comic.updatedAt)}
+                icon={<Calendar className="h-4 w-4 text-white/60" />}
+              />
             </div>
           </div>
 
-          {/* Chapters */}
-          <div className="space-y-4">
-            <ChapterList
-              slug={komik.slug}
-              updatedAt={komik.updated_at ?? komik.created_at}
-              chapters={chapters}
-            />
+          {/* Info */}
+          <div className="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur">
+            <div className="flex flex-wrap gap-2">
+              {comic.status ? <Badge>{comic.status}</Badge> : null}
+              <Badge>{totalChapters} Chapter</Badge>
+              <Badge>{totalVolumes} Volume</Badge>
+            </div>
 
-            {chapters.length === 0 ? (
-              <div className="rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
-                <p className="text-sm text-white/70">
-                  Belum ada chapter di tabel <span className="text-white/85">komik_chapters</span> untuk komik ini.
-                  Kamu bilang mau insert manual — silakan insert dulu, nanti list ini otomatis muncul.
-                </p>
+            <h1 className="mt-3 text-3xl font-extrabold md:text-4xl">{comic.title}</h1>
+
+            <p className="text-sm text-white/65">
+              Author: <span className="font-semibold text-white/85">{comic.author ?? "—"}</span>
+            </p>
+
+            {comic.tags?.length ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {comic.tags.map((t) => (
+                  <Badge key={t}>{t}</Badge>
+                ))}
               </div>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-sm text-white/55">Genre: —</p>
+            )}
+
+            <div className="mt-4 rounded-2xl bg-black/25 p-4 ring-1 ring-white/10">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/85">
+                <BookOpen className="h-4 w-4 text-white/70" />
+                Sinopsis
+              </div>
+              <p className="text-sm leading-relaxed text-white/70">{synopsis}</p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={`/komik/${comic.slug}/chapter/1`}
+                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+              >
+                Baca dari Awal
+              </Link>
+
+              <Link
+                href={`/komik/${comic.slug}/chapter/${totalChapters || 1}`}
+                className="rounded-2xl bg-white/10 px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15"
+              >
+                Chapter Terbaru
+              </Link>
+            </div>
           </div>
+        </div>
+
+        <div className="mt-8">
+          <ChapterList slug={comic.slug} updatedAt={comic.updatedAt} chapters={chapters} />
         </div>
       </div>
     </section>
+  );
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10">
+      {children}
+    </span>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="inline-flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      <span className="font-semibold text-white/90">{value}</span>
+    </div>
   );
 }
