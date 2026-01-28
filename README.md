@@ -10,8 +10,9 @@ Project ini cocok untuk personal project, studio komik, atau platform baca onlin
 - **React**
 - **Tailwind CSS**
 - **TypeScript**
-- **Next Font (Geist)**
-- **Vercel Ready**
+- **Next Font**
+- **Vercel**
+- **Supabase**
 
 ---
 

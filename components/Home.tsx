@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
+import { Flame } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getPopularComics, formatDateID } from "@/lib/comics";
 
 const SLIDE_INTERVAL = 3500;
 
@@ -34,6 +37,9 @@ export default function Home() {
   }, [currentIndex, paused]);
 
   const caption = useMemo(() => CAPTIONS[currentIndex % CAPTIONS.length], [currentIndex]);
+
+  const popularComics = getPopularComics(6);
+
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white">
@@ -159,7 +165,7 @@ export default function Home() {
 
                 {/* top tag */}
                 <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs text-white/90 ring-1 ring-white/15 backdrop-blur">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                  <Flame className="h-3.5 w-3.5 text-orange-400 drop-shadow-[0_0_6px_rgba(251,146,60,0.6)]" />
                   Trending
                 </div>
 
@@ -224,7 +230,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Dots */}
               <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div className="flex items-center gap-2">
                   {IMAGES.map((_, index) => (
@@ -261,30 +266,82 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bottom feature row */}
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              title: "UI Modern & Clean",
-              desc: "Tampilan glass + gradient biar premium.",
-            },
-            {
-              title: "Navigasi Cepat",
-              desc: "Cari judul, genre, dan update lebih gampang.",
-            },
-            {
-              title: "Gambar Tajam",
-              desc: "Preview & cover lebih enak dilihat.",
-            },
-          ].map((f) => (
-            <div
-              key={f.title}
-              className="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur transition hover:bg-white/[0.07]"
-            >
-              <p className="text-base font-semibold">{f.title}</p>
-              <p className="mt-2 text-sm text-white/65">{f.desc}</p>
+        {/* ✅ Komik List */}
+        <div className="mt-14">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold">Komik Populer Minggu Ini</h2>
+              <p className="mt-1 text-sm text-white/65">
+                Catatan singkat + chapter terakhir + tanggal update terakhir.
+              </p>
             </div>
-          ))}
+
+            <Link
+              href="/komik"
+              className="hidden sm:inline-flex rounded-xl bg-white/5 px-4 py-2 text-sm text-white/70 ring-1 ring-white/10 hover:bg-white/10 hover:text-white transition"
+            >
+              Lihat semua
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {popularComics.map((c) => (
+              <Link
+                key={c.id}
+                href={`/komik/${c.slug}`}
+                className="group rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
+              >
+                <div className="flex gap-4 p-4">
+                  <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+                    <Image
+                      src={c.cover}
+                      alt={c.title}
+                      fill
+                      sizes="80px"
+                      className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{c.title}</p>
+
+                    <p className="mt-1 text-xs text-white/65 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                      {c.note}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                        Ch. {c.lastChapter}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                        Update: {formatDateID(c.updatedAt)}
+                      </span>
+                    </div>
+
+                    {c.tags?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {c.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/55 ring-1 ring-white/10"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                <div className="flex items-center justify-between px-4 py-3 text-xs text-white/60">
+                  <span>Lanjut baca chapter terbaru</span>
+                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 

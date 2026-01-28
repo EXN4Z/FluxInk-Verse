@@ -1,15 +1,9 @@
 import "./globals.css";
-import Navbar from "@/components/Navbar";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <Navbar />
+    <html lang="id">
+      <body className="bg-zinc-950 text-white">
         {children}
       </body>
     </html>
