@@ -117,7 +117,7 @@ export default async function ChapterPage({
   }));
 
   if (!pages.length) {
-    // ga ada page → tetap 404 biar jelas
+    
     notFound();
   }
 
