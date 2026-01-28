@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { BookPlus, Image as ImageIcon, Loader2, Plus, Search, Tag, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type Comic = {
   id: number;
@@ -19,6 +20,7 @@ type Comic = {
 type Flash = { type: "success" | "error"; text: string };
 
 export default function AddComic() {
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [author, setAuthor] = useState("");
@@ -38,7 +40,36 @@ export default function AddComic() {
   const [currentGenre, setCurrentGenre] = useState("");
 
   const [flash, setFlash] = useState<Flash | null>(null);
+  const [authorized, setAuthorized] = useState(false);
 
+
+  useEffect(() => {
+    const checkAcc = async () => {
+      const {data: { user }, error: userError} = await supabase.auth.getUser();
+      if(userError || !user) {
+        router.push("/");
+        return;
+      }
+      const {data: roleData, error: roleError} = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+      if(roleError || !roleData) {
+        router.push("/")
+        return;
+      }
+      if(roleData.role === "admin") {
+        setAuthorized(true);
+      } else {
+        router.push("/")
+      }
+      setLoading(false);
+    };
+
+    checkAcc();
+  }, [router]);
   // preview file
   useEffect(() => {
     if (!file) {
