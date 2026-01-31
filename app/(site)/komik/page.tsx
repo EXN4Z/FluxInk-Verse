@@ -24,85 +24,105 @@ export default function KomikPage() {
   const [genres, setGenres] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [comic, setComic] = useState<ComicItem[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-useEffect(() => {
-  const fetchGenre = async () => {
-    const { data, error } = await supabase
-      .from("genre")
-      .select("id, genre");
+  useEffect(() => {
+    const fetchGenre = async () => {
+      const { data, error } = await supabase.from("genre").select("id, genre");
 
-    if (!error && data) {
-      // genre sudah array → langsung flatten
-      const parsed = data.flatMap((g) =>
-        Array.isArray(g.genre) ? g.genre : []
-      );
+      if (!error && data) {
+        // genre sudah array → langsung flatten
+        const parsed = data.flatMap((g) => (Array.isArray(g.genre) ? g.genre : []));
 
-      // hilangkan duplikat
-      const unique = [...new Set(parsed)];
+        // hilangkan duplikat
+        const unique = [...new Set(parsed)];
 
-      // samakan struktur dengan UI
-      setGenres(unique.map((genre, i) => ({
-        id: i,
-        genre,
-      })));
-    }
+        // samakan struktur dengan UI
+        setGenres(
+          unique.map((genre, i) => ({
+            id: i,
+            genre,
+          }))
+        );
+      }
 
-    setLoading(false);
-  };
+      setLoading(false);
+    };
 
-  fetchGenre();
-}, []);
+    fetchGenre();
+  }, []);
 
-useEffect(() => {
-  const getComic = async () => {
-    const { data, error } = await supabase
-      .from("komik")
-      .select("*"); // bisa juga select kolom tertentu
+  useEffect(() => {
+    const getComic = async () => {
+      const { data, error } = await supabase.from("komik").select("*"); // bisa juga select kolom tertentu
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+      if (error) {
+        console.error(error);
+        return;
+      }
 
-    if (data) {
-      // mapping dari DB ke ComicItem supaya nama properti cocok
-      const mapped: ComicItem[] = (data as any[]).map((c) => ({
-        id: c.id,
-        title: c.judul_buku,  // map dari DB
-        slug: c.slug,
-        cover: c.cover_url,
-        note: c.deskripsi,
-        lastChapter: c.chapter,
-        updatedAt: c.updated_at,
-        tags: c.genre,
-        author: c.author,
-        status: c.status,
-        rating: c.rating,
-        views: c.view,
-      }));
+      if (data) {
+        // mapping dari DB ke ComicItem supaya nama properti cocok
+        const mapped: ComicItem[] = (data as any[]).map((c) => ({
+          id: c.id,
+          title: c.judul_buku, // map dari DB
+          slug: c.slug,
+          cover: c.cover_url,
+          note: c.deskripsi,
+          lastChapter: c.chapter,
+          updatedAt: c.updated_at,
+          tags: c.genre,
+          author: c.author,
+          status: c.status,
+          rating: c.rating,
+          views: c.view,
+        }));
 
-      setComic(mapped);
-    }
-  };
+        setComic(mapped);
+      }
+    };
 
-  getComic();
-}, []);
+    getComic();
+  }, []);
 
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userRes?.user) {
+        setIsAdmin(false);
+        return;
+      }
 
+      const { data: profile, error: profErr } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userRes.user.id)
+        .single();
 
+      if (profErr) {
+        console.error("Error fetch profile:", profErr);
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(profile?.role === "admin");
+    };
+
+    checkAdmin();
+  }, []);
 
   const tags = useMemo(() => {
     const set = new Set<string>();
     comic.forEach((c) => c.tags?.forEach((t) => set.add(t)));
     return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b, "id-ID"))];
-  }, []);
+  }, [comic]);
 
   const populer = useMemo(() => {
     return [...comic].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 6);
   }, [comic]);
 
   const filtered = useMemo(() => {
-    let data =  [...comic];
+    let data = [...comic];
 
     const qq = q.trim().toLowerCase();
     if (qq) {
@@ -169,20 +189,30 @@ useEffect(() => {
             </span>
           </h1>
           <p className="max-w-2xl text-sm text-white/65">
-            Cari berdasarkan judul, author, atau genre. Populer taruh di atas biar gampang buat mulai explore.
+            Cari berdasarkan judul, author, atau genre. Populer taruh di atas biar gampang buat mulai
+            explore.
           </p>
         </div>
 
         {/* Populer di atas */}
         <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold">🔥 Populer Saat Ini</h2>
-            <Link
-              href="/"
-              className="text-sm text-white/60 hover:text-white transition"
-            >
-              ← Balik ke Home
-            </Link>
+
+            <div className="flex items-center gap-3">
+              {isAdmin && (
+                <Link
+                  href="/insertComic"
+                  className="rounded-2xl bg-white/10 px-4 py-2 text-sm text-white/85 ring-1 ring-white/10 hover:bg-white/15 transition"
+                >
+                  + Tambah Komik
+                </Link>
+              )}
+
+              <Link href="/" className="text-sm text-white/60 hover:text-white transition">
+                ← Balik ke Home
+              </Link>
+            </div>
           </div>
 
           <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -243,27 +273,24 @@ useEffect(() => {
 
           {/* Tags filter */}
           <div className="mt-4 flex flex-wrap gap-2">
-  {loading && (
-    <span className="text-xs text-white/50">Loading genre...</span>
-  )}
+            {loading && <span className="text-xs text-white/50">Loading genre...</span>}
 
-  {!loading &&
-    genres.map((g) => (
-      <button
-        key={g.id}
-        onClick={() => setTag(g.genre)}
-        className={`rounded-full px-3 py-1 text-xs ring-1 transition
+            {!loading &&
+              genres.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setTag(g.genre)}
+                  className={`rounded-full px-3 py-1 text-xs ring-1 transition
           ${
             tag === g.genre
               ? "bg-white text-black ring-white"
               : "bg-white/5 text-white/70 ring-white/10 hover:bg-white/10"
           }`}
-      >
-        {g.genre}
-      </button>
-    ))}
-</div>
-
+                >
+                  {g.genre}
+                </button>
+              ))}
+          </div>
 
           <div className="mt-4 text-xs text-white/60">
             Menampilkan <span className="text-white/85 font-semibold">{filtered.length}</span> komik
@@ -354,20 +381,13 @@ function GridCard({ c }: { c: ComicItem }) {
       className="group overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
     >
       <div className="relative h-44">
-  {c.cover && c.cover.trim() !== "" ? (
-      <Image
-        src={c.cover}
-        alt={c.title}
-        fill
-        sizes="64px"
-        className="object-cover object-top"
-        unoptimized
-      />
-    ) : (
-      <div className="flex h-full w-full items-center justify-center bg-white/20 text-xs text-white/50">
-        No Image
-      </div>
-    )}
+        {c.cover && c.cover.trim() !== "" ? (
+          <Image src={c.cover} alt={c.title} fill sizes="64px" className="object-cover object-top" unoptimized />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-white/20 text-xs text-white/50">
+            No Image
+          </div>
+        )}
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
 
