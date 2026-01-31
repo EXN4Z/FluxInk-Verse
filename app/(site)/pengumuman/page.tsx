@@ -59,7 +59,7 @@ export default function PengumumanPage() {
   const hasData = useMemo(() => items.length > 0, [items]);
 
   return (
-    <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white">
+    <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white h-screen">
       {/* Decorative background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-20 -left-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
