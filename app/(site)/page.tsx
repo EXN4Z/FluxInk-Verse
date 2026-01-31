@@ -4,7 +4,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { Flame } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getPopularComics, formatDateID } from "@/lib/comics";
+import { formatDateID } from "@/lib/comics";
+import { supabase } from "@/lib/supabase";
+
+type DbComic = {
+  id: number;
+  judul_buku: string;
+  deskripsi: string;
+  cover_url: string;
+  author: string;
+  chapter: number;
+  genre?: string[] | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  view?: number | null;
+};
 
 const SLIDE_INTERVAL = 3500;
 
@@ -38,7 +52,29 @@ export default function Home() {
 
   const caption = useMemo(() => CAPTIONS[currentIndex % CAPTIONS.length], [currentIndex]);
 
-  const popularComics = getPopularComics(6);
+  const [popularComics, setPopularComics] = useState<DbComic[]>([]);
+  const [loadingComics, setLoadingComics] = useState(true);
+
+  useEffect(() => {
+    const fetchPopular = async () => {
+      setLoadingComics(true);
+
+      // ambil komik dari Supabase (fallback urut by created_at kalau view belum ada)
+      const { data, error } = await supabase
+        .from("komik")
+        .select(
+          "id, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, created_at, view"
+        )
+        .order("view", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (!error && data) setPopularComics(data as DbComic[]);
+      setLoadingComics(false);
+    };
+
+    fetchPopular();
+  }, []);
 
 
   return (
@@ -285,17 +321,35 @@ export default function Home() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {popularComics.map((c) => (
+            {loadingComics ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur"
+                >
+                  <div className="flex gap-4 p-4">
+                    <div className="h-24 w-20 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/10" />
+                    <div className="min-w-0 flex-1">
+                      <div className="h-4 w-2/3 rounded bg-white/10" />
+                      <div className="mt-2 h-3 w-full rounded bg-white/10" />
+                      <div className="mt-2 h-3 w-5/6 rounded bg-white/10" />
+                      <div className="mt-4 h-5 w-1/2 rounded bg-white/10" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : popularComics.length ? (
+              popularComics.map((c) => (
               <Link
                 key={c.id}
-                href={`/komik/${c.slug}`}
+                href={`/books/${c.id}`}
                 className="group rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
               >
                 <div className="flex gap-4 p-4">
                   <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
                     <Image
-                      src={c.cover}
-                      alt={c.title}
+                      src={c.cover_url}
+                      alt={c.judul_buku}
                       fill
                       sizes="80px"
                       className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
@@ -303,24 +357,24 @@ export default function Home() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{c.title}</p>
+                    <p className="truncate text-sm font-semibold text-white">{c.judul_buku}</p>
 
                     <p className="mt-1 text-xs text-white/65 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
-                      {c.note}
+                      {c.deskripsi}
                     </p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
                       <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
-                        Ch. {c.lastChapter}
+                        Ch. {c.chapter ?? 0}
                       </span>
                       <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
-                        Update: {formatDateID(c.updatedAt)}
+                        Update: {formatDateID((c.updated_at ?? c.created_at) ?? null)}
                       </span>
                     </div>
 
-                    {c.tags?.length ? (
+                    {c.genre?.length ? (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {c.tags.map((t) => (
+                        {c.genre.map((t) => (
                           <span
                             key={t}
                             className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/55 ring-1 ring-white/10"
@@ -340,7 +394,12 @@ export default function Home() {
                   <span className="transition-transform group-hover:translate-x-0.5">→</span>
                 </div>
               </Link>
-            ))}
+              ))
+            ) : (
+              <div className="sm:col-span-2 lg:col-span-3 rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 text-white/70">
+                Belum ada komik di database. Tambah dulu lewat halaman admin.
+              </div>
+            )}
           </div>
         </div>
       </div>
