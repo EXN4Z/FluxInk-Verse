@@ -3,10 +3,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Eye, ArrowLeft, Star, BookOpen, Calendar } from "lucide-react";
-
+import StarRating from "@/components/StarRating";
 import { ComicItem, formatCompactID, formatDateID } from "@/lib/comics";
 import ChapterList from "./ChapterList";
-
 import { createClient } from "@supabase/supabase-js";
 
 type Chapter = {
@@ -48,12 +47,18 @@ export default async function KomikDetailPage({
   const { data: komik, error: komikErr } = await supabase
     .from("komik")
     .select(
-      "id, slug, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, status, rating, view"
-    )
+  "id, slug, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, status, rating, rating_count, view"
+  )
+
     .eq("slug", key)
     .single();
 
-  if (komikErr || !komik) notFound();
+  if (komikErr || !komik) {
+  console.log("Komik fetch error:", komikErr);
+  console.log("Slug key:", key);
+  notFound();
+}
+
 
   // 2) increment view (best-effort)
   // kalau kamu mau atomic anti race, nanti gue bikinin RPC. Ini cukup buat sekarang.
@@ -161,6 +166,16 @@ export default async function KomikDetailPage({
             <p className="text-sm text-white/65">
               Author: <span className="font-semibold text-white/85">{comic.author ?? "—"}</span>
             </p>
+
+            {/* ⭐ RATING */}
+<div className="mt-2">
+  <StarRating
+    komikId={komik.id}
+    initialAvg={komik.rating}
+    initialCount={komik.rating_count ?? 0}
+  />
+</div>
+
 
             {comic.tags?.length ? (
               <div className="mt-2 flex flex-wrap gap-2">
