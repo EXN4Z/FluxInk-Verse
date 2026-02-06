@@ -52,7 +52,7 @@ export default function PremiumPage() {
   const benefits = useMemo(
     () => [
       { icon: Sparkles, title: "Badge Premium", desc: "Role / gelar premium tampil di profile & navbar." },
-      { icon: Zap, title: "Akses Prioritas", desc: "Siap untuk fitur premium selanjutnya (bookmark sync, dll)." },
+      { icon: Zap, title: "Auto Scroll", desc: "Scroll otomatis saat membaca komik." },
       { icon: ShieldCheck, title: "Dukungan", desc: "Support lebih cepat + request judul." },
     ],
     []

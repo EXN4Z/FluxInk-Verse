@@ -22,18 +22,6 @@ type DbComic = {
 
 const SLIDE_INTERVAL = 3500;
 
-const IMAGES = [
-  "/images/populer/image.png",
-  "/images/populer/image2.png",
-  "/images/populer/image3.png",
-];
-
-const CAPTIONS = [
-  { title: "Trending Minggu Ini", desc: "Komik pilihan dengan art paling gokil." },
-  { title: "Update Terbaru", desc: "Bab baru rilis rutin & gampang dicari." },
-  { title: "Editor’s Pick", desc: "Rekomendasi manhwa & ilustrasi terbaik." },
-];
-
 function formatCompact(n: number) {
   if (!Number.isFinite(n)) return "0";
   if (n < 1000) return String(n);
@@ -46,7 +34,11 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  const total = IMAGES.length;
+  // ✅ SLIDER DATA dari Supabase (ganti dummy IMAGES)
+  const [slides, setSlides] = useState<DbComic[]>([]);
+
+  // total slide (fallback 1 biar tidak error saat kosong)
+  const total = Math.max(1, slides.length);
 
   const next = () => setCurrentIndex((i) => (i + 1) % total);
   const prev = () => setCurrentIndex((i) => (i - 1 + total) % total);
@@ -56,9 +48,16 @@ export default function Home() {
     if (paused) return;
     const t = setTimeout(() => next(), SLIDE_INTERVAL);
     return () => clearTimeout(t);
-  }, [currentIndex, paused]);
+  }, [currentIndex, paused, total]);
 
-  const caption = useMemo(() => CAPTIONS[currentIndex % CAPTIONS.length], [currentIndex]);
+  // ✅ caption dari Supabase (ganti dummy CAPTIONS)
+  const caption = useMemo(() => {
+    const s = slides[currentIndex] || null;
+    return {
+      title: s?.judul_buku ?? "Trending Minggu Ini",
+      desc: s?.deskripsi ?? "Komik pilihan dengan art paling gokil.",
+    };
+  }, [currentIndex, slides]);
 
   const [popularComics, setPopularComics] = useState<DbComic[]>([]);
   const [loadingComics, setLoadingComics] = useState(true);
@@ -89,7 +88,16 @@ export default function Home() {
         .order("created_at", { ascending: false })
         .limit(6);
 
-      if (!error && data) setPopularComics(data as DbComic[]);
+      if (!error && data) {
+        const rows = data as DbComic[];
+        setPopularComics(rows);
+
+        // ✅ isi slider dari komik populer (ambil 3 cover pertama)
+        const sliderRows = rows.filter((x) => !!x.cover_url).slice(0, 3);
+        setSlides(sliderRows);
+        setCurrentIndex(0);
+      }
+
       setLoadingComics(false);
     };
 
@@ -253,11 +261,12 @@ export default function Home() {
             >
               {/* Slider */}
               <div className="relative h-[320px] md:h-[440px]">
-                {IMAGES.map((img, index) => (
+                {/* ✅ GANTI DUMMY -> ambil dari slides Supabase */}
+                {(slides.length ? slides : [null as any]).map((item, index) => (
                   <Image
-                    key={index}
-                    src={img}
-                    alt={`Slide ${index + 1}`}
+                    key={item?.id ?? index}
+                    src={item?.cover_url ?? "/images/populer/image.png"}
+                    alt={item?.judul_buku ?? `Slide ${index + 1}`}
                     fill
                     priority={index === 0}
                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -283,7 +292,6 @@ export default function Home() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold">{caption.title}</p>
-                        <p className="mt-1 text-xs text-white/70">{caption.desc}</p>
                       </div>
                       <div className="text-xs text-white/70">
                         {String(currentIndex + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}
@@ -339,7 +347,8 @@ export default function Home() {
 
               <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div className="flex items-center gap-2">
-                  {IMAGES.map((_, index) => (
+                  {/* ✅ dots ikut jumlah slides */}
+                  {Array.from({ length: total }).map((_, index) => (
                     <button
                       key={index}
                       type="button"
@@ -360,8 +369,8 @@ export default function Home() {
             {/* Mini feature cards (biar “rame”) */}
             <div className="mt-6 grid grid-cols-2 gap-4">
               <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
-                <p className="text-sm font-semibold">Bookmark</p>
-                <p className="mt-1 text-xs text-white/65">Lanjut baca tanpa ribet.</p>
+                <p className="text-sm font-semibold">Auto Scroll (premium)</p>
+                <p className="mt-1 text-xs text-white/65">Scroll otomatis saat membaca komik.</p>
               </div>
               <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
                 <p className="text-sm font-semibold">Mode Nyaman</p>
@@ -390,7 +399,10 @@ export default function Home() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {loadingComics ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur">
+                <div
+                  key={i}
+                  className="rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur"
+                >
                   <div className="flex gap-4 p-4">
                     <div className="h-24 w-20 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/10" />
                     <div className="min-w-0 flex-1">
@@ -428,7 +440,9 @@ export default function Home() {
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
-                        <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">Ch. {c.chapter ?? 0}</span>
+                        <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                          Ch. {c.chapter ?? 0}
+                        </span>
                         <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
                           Update: {formatDateID((c.updated_at ?? c.created_at) ?? null)}
                         </span>
