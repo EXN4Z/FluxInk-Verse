@@ -197,7 +197,7 @@ export default function KomikPage() {
         {/* Populer di atas */}
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">🔥 Populer Saat Ini</h2>
+            <h2 className="text-lg font-bold">Populer Saat Ini</h2>
 
             <div className="flex items-center gap-3">
               {isAdmin && (
