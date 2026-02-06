@@ -299,12 +299,6 @@ export default function Navbar() {
                       )}
                     </span>
                     <span className="text-sm text-white/80">{displayName}</span>
-
-                    {isPremium ? (
-                      <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[11px] text-emerald-200 ring-1 ring-emerald-400/20">
-                        <Crown className="h-3.5 w-3.5" />
-                      </span>
-                    ) : null}
                   </Link>
 
                   <button
