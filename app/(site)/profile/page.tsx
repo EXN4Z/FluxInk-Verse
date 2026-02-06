@@ -421,7 +421,6 @@ export default function ProfilePage() {
                   {/* ✅ role / gelar */}
                   {premium?.is_premium ? (
                     <div className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200 ring-1 ring-emerald-400/20">
-                      <span className="text-[11px]">👑</span>
                       Premium Member
                       {premium.premium_since ? (
                         <span className="text-emerald-100/70">
