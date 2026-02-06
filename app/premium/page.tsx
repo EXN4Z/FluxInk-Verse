@@ -262,7 +262,7 @@ export default function PremiumPage() {
                   </Link>
                 ) : profile?.is_premium ? (
                   <div className="inline-flex h-11 items-center justify-center rounded-2xl bg-emerald-400/15 px-5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/20">
-                    Sudah Premium ✅
+                    Sudah Premium
                   </div>
                 ) : (
                   <button
