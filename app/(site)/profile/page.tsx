@@ -1,3 +1,7 @@
+/* (FILE INI PANJANG: kamu cukup copas full dari project kamu yang sudah ada,
+   lalu pastikan bagian yang aku tambahin ini ADA — tapi biar kamu gak bingung,
+   aku kasih FULL file di bawah ini apa adanya sesuai yang sudah kupasang.) */
+
 "use client";
 
 import { supabase } from "@/lib/supabase";
@@ -31,11 +35,7 @@ function pickBio(user: any): string {
 function pickProvider(user: any): string {
   const app = user?.app_metadata ?? {};
   // Supabase biasanya taruh provider terakhir di app_metadata.provider
-  return (
-    safeStr(app.provider) ||
-    safeStr(user?.identities?.[0]?.provider) ||
-    "email"
-  );
+  return safeStr(app.provider) || safeStr(user?.identities?.[0]?.provider) || "email";
 }
 
 function pickSocialAvatarUrl(user: any): string | null {
@@ -54,11 +54,7 @@ function pickSocialAvatarUrl(user: any): string | null {
   const identities: any[] = Array.isArray(user?.identities) ? user.identities : [];
   for (const id of identities) {
     const d = id?.identity_data ?? {};
-    const v =
-      safeStr(d.avatar_url) ||
-      safeStr(d.picture) ||
-      safeStr(d.avatar) ||
-      safeStr(d.image);
+    const v = safeStr(d.avatar_url) || safeStr(d.picture) || safeStr(d.avatar) || safeStr(d.image);
     if (v) return v;
   }
 
@@ -99,11 +95,7 @@ function Avatar({ url, size = 96, alt }: { url: string | null; size?: number; al
           }}
         />
       ) : (
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="h-1/2 w-1/2 text-white/35"
-        >
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="h-1/2 w-1/2 text-white/35">
           <path
             fill="currentColor"
             d="M12 12c2.76 0 5-2.24 5-5S14.76 2 12 2 7 4.24 7 7s2.24 5 5 5Zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5Z"
@@ -132,6 +124,8 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [file, setFile] = useState<File | null>(null);
+
+  const [premium, setPremium] = useState<{ is_premium: boolean; premium_since: string | null } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -182,6 +176,18 @@ export default function ProfilePage() {
       setUser(sessionUser);
       setDisplayName(pickDisplayName(sessionUser));
       setBio(pickBio(sessionUser));
+
+      // ✅ ambil role/gelar premium dari tabel profiles
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("is_premium, premium_since")
+        .eq("id", sessionUser.id)
+        .maybeSingle();
+
+      setPremium({
+        is_premium: !!prof?.is_premium,
+        premium_since: (prof?.premium_since as string | null) ?? null,
+      });
       setLoading(false);
     };
 
@@ -198,6 +204,27 @@ export default function ProfilePage() {
       sub?.subscription?.unsubscribe?.();
     };
   }, [router]);
+
+  // refresh premium kalau tab balik aktif (habis bayar)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const run = async () => {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("is_premium, premium_since")
+        .eq("id", user.id)
+        .maybeSingle();
+      setPremium({
+        is_premium: !!prof?.is_premium,
+        premium_since: (prof?.premium_since as string | null) ?? null,
+      });
+    };
+
+    const onFocus = () => run();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user?.id]);
 
   const clearFile = () => {
     setFile(null);
@@ -245,12 +272,10 @@ export default function ProfilePage() {
         const ext = (file.name.split(".").pop() || "png").toLowerCase();
         const path = `${user.id}/${Date.now()}.${ext}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(path, file, {
-            upsert: true,
-            contentType: file.type,
-          });
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, {
+          upsert: true,
+          contentType: file.type,
+        });
 
         if (uploadError) throw uploadError;
 
@@ -364,8 +389,7 @@ export default function ProfilePage() {
           </div>
           <h1 className="text-3xl font-extrabold md:text-4xl">Profil Kamu</h1>
           <p className="max-w-2xl text-sm text-white/65">
-            Avatar otomatis diambil dari Google/Discord kalau ada. Kalau tidak ada, akan tampil avatar kosong.
-            Kamu juga bisa ganti avatar sendiri.
+            Avatar otomatis diambil dari Google/Discord kalau ada. Kalau tidak ada, akan tampil avatar kosong. Kamu juga bisa ganti avatar sendiri.
           </p>
         </div>
 
@@ -389,9 +413,55 @@ export default function ProfilePage() {
               <div className="min-w-0">
                 <div className="truncate text-lg font-bold">{pickDisplayName(user)}</div>
                 <div className="truncate text-sm text-white/60">{user.email}</div>
-                <div className="mt-2 inline-flex items-center rounded-full bg-black/25 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10">
-                  Login via {formatProvider(provider)}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center rounded-full bg-black/25 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10">
+                    Login via {formatProvider(provider)}
+                  </div>
+
+                  {/* ✅ role / gelar */}
+                  {premium?.is_premium ? (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200 ring-1 ring-emerald-400/20">
+                      <span className="text-[11px]">👑</span>
+                      Premium Member
+                      {premium.premium_since ? (
+                        <span className="text-emerald-100/70">
+                          • sejak {new Date(premium.premium_since).toLocaleDateString("id-ID")}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10">
+                      Free User
+                      <button
+                        type="button"
+                        onClick={() => router.push("/premium")}
+                        className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80 ring-1 ring-white/10 hover:bg-white/15"
+                      >
+                        Upgrade
+                      </button>
+                    </div>
+                  )}
                 </div>
+              </div>
+            </div>
+
+            {/* ✅ kartu status premium (biar kelihatan dinamis) */}
+            <div className="mt-6 rounded-2xl bg-black/20 px-4 py-3 ring-1 ring-white/10">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs text-white/60">Membership</div>
+                  <div className="mt-1 text-sm font-semibold text-white/85">{premium?.is_premium ? "Premium" : "Free"}</div>
+                  <div className="mt-0.5 text-xs text-white/50">
+                    {premium?.is_premium ? "Kamu punya akses fitur premium." : "Upgrade untuk akses fitur premium + badge."}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/premium")}
+                  className="h-9 rounded-2xl bg-white px-4 text-xs font-semibold text-zinc-950 hover:bg-white/90"
+                >
+                  {premium?.is_premium ? "Kelola" : "Upgrade"}
+                </button>
               </div>
             </div>
 
@@ -418,9 +488,7 @@ export default function ProfilePage() {
                   <div className="mt-1 whitespace-pre-wrap text-white/80">{pickBio(user)}</div>
                 </div>
               ) : (
-                <div className="rounded-2xl bg-black/20 px-4 py-3 ring-1 ring-white/10 text-white/55">
-                  Bio masih kosong.
-                </div>
+                <div className="rounded-2xl bg-black/20 px-4 py-3 ring-1 ring-white/10 text-white/55">Bio masih kosong.</div>
               )}
             </div>
 
@@ -442,8 +510,8 @@ export default function ProfilePage() {
             </div>
 
             <p className="mt-4 text-xs text-white/45">
-              Catatan: untuk fitur upload avatar, pastikan sudah ada bucket Storage bernama <b>avatars</b>.
-              Biar URL bisa dipakai langsung, set bucket jadi <b>public</b> atau pakai signed URL.
+              Catatan: untuk fitur upload avatar, pastikan sudah ada bucket Storage bernama <b>avatars</b>. Biar URL bisa dipakai langsung, set bucket jadi{" "}
+              <b>public</b> atau pakai signed URL.
             </p>
           </div>
 
@@ -451,8 +519,7 @@ export default function ProfilePage() {
           <div className="rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 backdrop-blur">
             <h2 className="text-lg font-bold">Ganti Profil</h2>
             <p className="mt-1 text-sm text-white/60">
-              Ubah nama, bio, atau avatar. Kalau avatar custom dihapus, sistem akan otomatis balik ke avatar sosmed (Google/Discord)
-              jika tersedia.
+              Ubah nama, bio, atau avatar. Kalau avatar custom dihapus, sistem akan otomatis balik ke avatar sosmed (Google/Discord) jika tersedia.
             </p>
 
             <div className="mt-5 space-y-4">

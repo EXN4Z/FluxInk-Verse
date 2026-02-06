@@ -34,6 +34,14 @@ const CAPTIONS = [
   { title: "Editor’s Pick", desc: "Rekomendasi manhwa & ilustrasi terbaik." },
 ];
 
+function formatCompact(n: number) {
+  if (!Number.isFinite(n)) return "0";
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  return `${(n / 1_000_000_000).toFixed(n % 1_000_000_000 === 0 ? 0 : 1)}B`;
+}
+
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -55,6 +63,20 @@ export default function Home() {
   const [popularComics, setPopularComics] = useState<DbComic[]>([]);
   const [loadingComics, setLoadingComics] = useState(true);
 
+  const [stats, setStats] = useState<{
+    totalComics: number;
+    totalGenres: number;
+    totalChapters: number;
+    totalViews: number;
+    topGenres: string[];
+  }>({
+    totalComics: 0,
+    totalGenres: 0,
+    totalChapters: 0,
+    totalViews: 0,
+    topGenres: ["Komik", "Manhwa", "Ilustrasi", "Romance", "Action", "Fantasy"],
+  });
+
   useEffect(() => {
     const fetchPopular = async () => {
       setLoadingComics(true);
@@ -62,9 +84,7 @@ export default function Home() {
       // ambil komik dari Supabase (fallback urut by created_at kalau view belum ada)
       const { data, error } = await supabase
         .from("komik")
-        .select(
-          "id, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, created_at, view"
-        )
+        .select("id, judul_buku, deskripsi, cover_url, author, chapter, genre, updated_at, created_at, view")
         .order("view", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(6);
@@ -76,6 +96,55 @@ export default function Home() {
     fetchPopular();
   }, []);
 
+  // ✅ Stats biar homepage dinamis (tanpa ubah layout)
+  useEffect(() => {
+    const fetchStats = async () => {
+      // total judul (count)
+      const { count: totalComics } = await supabase
+        .from("komik")
+        .select("id", { count: "exact", head: true });
+
+      // ambil minimal field untuk hitung genre/chapter/view
+      const { data: rows } = await supabase.from("komik").select("genre, chapter, view").limit(5000);
+
+      const genreFreq = new Map<string, number>();
+      let totalChapters = 0;
+      let totalViews = 0;
+
+      for (const r of rows || []) {
+        const ch = typeof (r as any).chapter === "number" ? (r as any).chapter : 0;
+        const vw = typeof (r as any).view === "number" ? (r as any).view : 0;
+        totalChapters += Math.max(0, ch);
+        totalViews += Math.max(0, vw);
+
+        const gs = (r as any).genre;
+        if (Array.isArray(gs)) {
+          for (const g of gs) {
+            if (typeof g === "string" && g.trim()) {
+              const key = g.trim();
+              genreFreq.set(key, (genreFreq.get(key) ?? 0) + 1);
+            }
+          }
+        }
+      }
+
+      const topGenres = Array.from(genreFreq.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([g]) => g);
+
+      setStats((s) => ({
+        ...s,
+        totalComics: totalComics ?? 0,
+        totalGenres: genreFreq.size,
+        totalChapters,
+        totalViews,
+        topGenres: topGenres.length ? topGenres : s.topGenres,
+      }));
+    };
+
+    fetchStats();
+  }, []);
 
   return (
     <section className="relative w-full overflow-hidden bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 text-white">
@@ -146,22 +215,25 @@ export default function Home() {
             {/* Quick stats */}
             <div className="mt-2 grid max-w-xl grid-cols-3 gap-3">
               <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
-                <div className="text-lg font-bold">1K+</div>
+                <div className="text-lg font-bold">{formatCompact(stats.totalComics)}</div>
                 <div className="text-xs text-white/60">Judul</div>
               </div>
               <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
-                <div className="text-lg font-bold">Fast</div>
-                <div className="text-xs text-white/60">Loading</div>
+                <div className="text-lg font-bold">{formatCompact(stats.totalGenres)}</div>
+                <div className="text-xs text-white/60">Genre</div>
               </div>
               <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 backdrop-blur">
-                <div className="text-lg font-bold">HD</div>
-                <div className="text-xs text-white/60">Quality</div>
+                <div className="text-lg font-bold">{formatCompact(stats.totalViews)}</div>
+                <div className="text-xs text-white/60">Views</div>
               </div>
             </div>
 
             {/* Chips */}
             <div className="flex flex-wrap gap-2 pt-1">
-              {["Komik", "Manhwa", "Ilustrasi", "Romance", "Action", "Fantasy"].map((t) => (
+              {(stats.topGenres.length
+                ? stats.topGenres
+                : ["Komik", "Manhwa", "Ilustrasi", "Romance", "Action", "Fantasy"]
+              ).map((t) => (
                 <span
                   key={t}
                   className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/70 ring-1 ring-white/10"
@@ -214,8 +286,7 @@ export default function Home() {
                         <p className="mt-1 text-xs text-white/70">{caption.desc}</p>
                       </div>
                       <div className="text-xs text-white/70">
-                        {String(currentIndex + 1).padStart(2, "0")}/
-                        {String(total).padStart(2, "0")}
+                        {String(currentIndex + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}
                       </div>
                     </div>
                   </div>
@@ -282,9 +353,7 @@ export default function Home() {
                   ))}
                 </div>
 
-                <div className="text-xs text-white/60">
-                  {paused ? "Paused" : "Auto-play"} • klik dot / panah
-                </div>
+                <div className="text-xs text-white/60">{paused ? "Paused" : "Auto-play"} • klik dot / panah</div>
               </div>
             </div>
 
@@ -307,9 +376,7 @@ export default function Home() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold">Komik Populer Minggu Ini</h2>
-              <p className="mt-1 text-sm text-white/65">
-                Catatan singkat + chapter terakhir + tanggal update terakhir.
-              </p>
+              <p className="mt-1 text-sm text-white/65">Catatan singkat + chapter terakhir + tanggal update terakhir.</p>
             </div>
 
             <Link
@@ -323,10 +390,7 @@ export default function Home() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {loadingComics ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur"
-                >
+                <div key={i} className="rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur">
                   <div className="flex gap-4 p-4">
                     <div className="h-24 w-20 shrink-0 rounded-2xl bg-white/10 ring-1 ring-white/10" />
                     <div className="min-w-0 flex-1">
@@ -340,60 +404,58 @@ export default function Home() {
               ))
             ) : popularComics.length ? (
               popularComics.map((c) => (
-              <Link
-                key={c.id}
-                href={`/books/${c.id}`}
-                className="group rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
-              >
-                <div className="flex gap-4 p-4">
-                  <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
-                    <Image
-                      src={c.cover_url}
-                      alt={c.judul_buku}
-                      fill
-                      sizes="80px"
-                      className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{c.judul_buku}</p>
-
-                    <p className="mt-1 text-xs text-white/65 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
-                      {c.deskripsi}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
-                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
-                        Ch. {c.chapter ?? 0}
-                      </span>
-                      <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
-                        Update: {formatDateID((c.updated_at ?? c.created_at) ?? null)}
-                      </span>
+                <Link
+                  key={c.id}
+                  href={`/books/${c.id}`}
+                  className="group rounded-3xl bg-white/5 ring-1 ring-white/10 shadow-xl shadow-black/30 backdrop-blur transition hover:bg-white/[0.07]"
+                >
+                  <div className="flex gap-4 p-4">
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10">
+                      <Image
+                        src={c.cover_url}
+                        alt={c.judul_buku}
+                        fill
+                        sizes="80px"
+                        className="object-cover object-top transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
                     </div>
 
-                    {c.genre?.length ? (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {c.genre.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/55 ring-1 ring-white/10"
-                          >
-                            {t}
-                          </span>
-                        ))}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{c.judul_buku}</p>
+
+                      <p className="mt-1 text-xs text-white/65 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                        {c.deskripsi}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-white/70">
+                        <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">Ch. {c.chapter ?? 0}</span>
+                        <span className="rounded-full bg-white/5 px-2 py-0.5 ring-1 ring-white/10">
+                          Update: {formatDateID((c.updated_at ?? c.created_at) ?? null)}
+                        </span>
                       </div>
-                    ) : null}
+
+                      {c.genre?.length ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {c.genre.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/55 ring-1 ring-white/10"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
 
-                <div className="h-px bg-white/10" />
+                  <div className="h-px bg-white/10" />
 
-                <div className="flex items-center justify-between px-4 py-3 text-xs text-white/60">
-                  <span>Lanjut baca chapter terbaru</span>
-                  <span className="transition-transform group-hover:translate-x-0.5">→</span>
-                </div>
-              </Link>
+                  <div className="flex items-center justify-between px-4 py-3 text-xs text-white/60">
+                    <span>Lanjut baca chapter terbaru</span>
+                    <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                  </div>
+                </Link>
               ))
             ) : (
               <div className="sm:col-span-2 lg:col-span-3 rounded-3xl bg-white/5 p-6 ring-1 ring-white/10 text-white/70">
