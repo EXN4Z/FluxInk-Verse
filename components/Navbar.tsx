@@ -130,6 +130,32 @@ export default function Navbar() {
     setOpenSearch(false);
   };
 
+  const [results, setResults] = useState<any[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+
+  useEffect(() => {
+    if (!q) {
+      setResults([]);
+      setLoadingSearch(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setLoadingSearch(true);
+
+      const { data } = await supabase
+        .from("komik")
+        .select("id, judul_buku, slug, cover_url, chapter")
+        .ilike("judul_buku", `%${q}%`)
+        .limit(5);
+
+      setResults(data || []);
+      setLoadingSearch(false);
+    }, 300); // debounce
+
+    return () => clearTimeout(timeout);
+  }, [q]);
+
   return (
     <>
       <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/35 backdrop-blur-xl">
@@ -379,20 +405,67 @@ export default function Navbar() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpenSearch(false)}
           />
+
           <div className="relative mx-auto mt-20 w-[92%] max-w-xl">
             <div className="overflow-hidden rounded-2xl bg-zinc-900/75 ring-1 ring-white/10 shadow-2xl">
-              <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-                <Search size={18} className="text-white/60" />
-                <input
-                  ref={searchRef}
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Cari judul, genre, author…"
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/40"
-                />
-                <kbd className="rounded-md bg-black/25 px-2 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10">
-                  ESC
-                </kbd>
+              {/* ⬇️ Ini tetap desain kamu, cuma dibikin relative biar dropdown absolute nempel */}
+              <div className="relative">
+                <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                  <Search size={18} className="text-white/60" />
+                  <input
+                    ref={searchRef}
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Cari judul…"
+                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/40"
+                  />
+                  <kbd className="rounded-md bg-black/25 px-2 py-0.5 text-[11px] text-white/60 ring-1 ring-white/10">
+                    ESC
+                  </kbd>
+                </div>
+
+                {/* ✅ Dropdown hasil kecil (absolute) - gak ubah tema */}
+                {q && (
+                  <div className="absolute left-0 right-0 top-full z-50 max-h-80 overflow-y-auto bg-zinc-950/95 ring-1 ring-white/10">
+                    {loadingSearch && (
+                      <p className="p-4 text-sm text-white/50">Loading...</p>
+                    )}
+
+                    {!loadingSearch && results.length === 0 && (
+                      <p className="p-4 text-sm text-white/50">
+                        Manga tidak ditemukan
+                      </p>
+                    )}
+
+                    {!loadingSearch &&
+                      results.map((manga) => (
+                        <Link
+                          key={manga.id}
+                          href={`/komik/${manga.slug}`}
+                          onClick={() => {
+                            setOpenSearch(false);
+                            setQ("");
+                          }}
+                          className="flex gap-3 py-1 hover:bg-white/5 transition"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={manga.cover_url}
+                            alt={manga.judul_buku}
+                            className="h-14 w-10 rounded object-cover"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white line-clamp-1">
+                              {manga.judul_buku}
+                            </p>
+                            <p className="text-xs text-white/50">
+                              Chapter {manga.chapter}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                  </div>
+                )}
               </div>
 
               <div className="p-4">
